@@ -1,0 +1,42 @@
+# Production stack: API + web (Caddy serving the React app and proxying /api).
+# The database is MongoDB Atlas (MONGO_URI), and files are in Vultr Object Storage.
+#
+# The web container listens on 127.0.0.1:${WEB_PORT} only. A reverse proxy on the host
+# (the server's own Caddy) serves the public domain over HTTPS and forwards to that port.
+#
+#   docker compose up -d --build
+#
+# All settings come from the .env file next to this file (see .env.example).
+
+name: yarin-portal
+
+services:
+  api:
+    build: ./server
+    image: yarin-portal-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4100
+      MONGO_URI: ${MONGO_URI:?Set MONGO_URI in .env}
+      MONGO_DB: ${MONGO_DB:-yarin_portal}
+      DNS_SERVERS: ${DNS_SERVERS:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env}
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-}
+      S3_BUCKET: ${S3_BUCKET:-}
+    # No published ports: only the web container reaches the API.
+
+  web:
+    build: ./client
+    image: yarin-portal-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      # Local only. Docker bypasses the host firewall, so never publish on 0.0.0.0.
+      - "127.0.0.1:${WEB_PORT:-8096}:80"

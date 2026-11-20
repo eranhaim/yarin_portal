@@ -1,0 +1,19 @@
+# Local development: only MongoDB runs in Docker.
+# The API and the React app run with "npm run dev" for fast reloads.
+#
+#   docker compose -f compose.dev.yaml up -d
+
+name: yarin-portal-dev
+
+services:
+  mongo:
+    image: mongo:9.0
+    restart: unless-stopped
+    ports:
+      # Reachable from this computer only. Port 27018, so it does not clash with a local MongoDB on 27017.
+      - "127.0.0.1:27018:27017"
+    volumes:
+      - mongo-dev-data:/data/db
+
+volumes:
+  mongo-dev-data:

@@ -1,0 +1,7 @@
+# Use LF line endings everywhere (the production server is Linux).
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.webp binary
+*.mp4 binary
+*.woff2 binary

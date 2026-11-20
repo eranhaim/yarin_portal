@@ -1,0 +1,306 @@
+/* ---------- Logo (shared) ---------- */
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-strong);
+  text-decoration: none;
+}
+
+.logo--light {
+  color: #fff;
+}
+
+.logo__mark {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--brand-500), var(--coral-500));
+  box-shadow: 0 8px 18px -8px rgba(98, 72, 255, 0.9);
+}
+
+.logo__text {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  font-family: var(--font-game);
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.logo__text > span {
+  font-weight: 500;
+  opacity: 0.7;
+}
+
+.logo__text small {
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--info-bg);
+  color: var(--info);
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ---------- Login layout ---------- */
+
+.login {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  min-height: 100dvh;
+}
+
+.login__brand {
+  position: relative;
+  display: flex;
+  overflow: hidden;
+  color: #fff;
+  background:
+    radial-gradient(1200px 600px at 10% 0%, rgba(140, 120, 255, 0.35), transparent 60%),
+    radial-gradient(800px 500px at 100% 100%, rgba(255, 107, 74, 0.25), transparent 60%),
+    linear-gradient(160deg, #1e1650 0%, #130d33 55%, #0b0720 100%);
+}
+
+.login__brand-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  padding: clamp(32px, 6vw, 72px);
+  max-width: 620px;
+}
+
+.login__pitch h1 {
+  color: #fff;
+  font-family: var(--font-game);
+  font-size: clamp(2rem, 3.6vw, 3.1rem);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+.login__pitch h1 span {
+  background: linear-gradient(90deg, #ffd56b, #ff8f75);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.login__pitch p {
+  max-width: 440px;
+  margin-top: 18px;
+  font-size: 1.05rem;
+  color: rgba(236, 232, 255, 0.78);
+}
+
+.login__perks {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.login__perks li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.login__perks li span {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #ffd56b;
+}
+
+.login__art {
+  position: absolute;
+  inset: auto 0 0 0;
+  width: 100%;
+  height: 62%;
+  pointer-events: none;
+}
+
+.login__star {
+  fill: #fff;
+  animation: login-twinkle 3.2s ease-in-out infinite;
+}
+
+.login__node-halo {
+  fill: rgba(255, 213, 107, 0.18);
+}
+
+.login__node-core {
+  fill: #ffd56b;
+  stroke: #fff;
+  stroke-width: 3;
+}
+
+.login__node--current .login__node-halo {
+  fill: rgba(255, 143, 117, 0.25);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: login-pulse 2s ease-out infinite;
+}
+
+.login__node--current .login__node-core {
+  fill: #ff6b4a;
+}
+
+/* ---------- Form side ---------- */
+
+.login__main {
+  display: grid;
+  place-items: center;
+  padding: 32px 20px;
+  background:
+    radial-gradient(600px 400px at 100% 0%, rgba(140, 120, 255, 0.12), transparent 70%),
+    var(--bg);
+}
+
+.login__card {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: min(420px, 100%);
+  padding: 36px 32px;
+  border-radius: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+}
+
+.login__card.is-shaking {
+  animation: login-shake 0.4s ease;
+}
+
+.login__card h2 {
+  font-family: var(--font-game);
+  font-size: 1.9rem;
+  font-weight: 600;
+}
+
+.login__sub {
+  margin-top: -10px;
+  color: var(--text-muted);
+}
+
+.login__mobile-logo {
+  display: none;
+}
+
+.login__input {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.login__input > svg {
+  position: absolute;
+  left: 14px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.login__input .input {
+  height: 48px;
+  padding-left: 42px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.login__peek {
+  position: absolute;
+  right: 6px;
+}
+
+.login__input:has(.login__peek) .input {
+  padding-right: 48px;
+}
+
+.login__submit {
+  margin-top: 4px;
+}
+
+.login__help {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .login {
+    grid-template-columns: 1fr;
+  }
+  .login__brand {
+    display: none;
+  }
+  .login__mobile-logo {
+    display: block;
+    margin-bottom: 8px;
+  }
+  .login__main {
+    background:
+      radial-gradient(500px 300px at 50% 0%, rgba(140, 120, 255, 0.25), transparent 70%),
+      var(--bg);
+  }
+}
+
+@media (max-width: 480px) {
+  .login__card {
+    padding: 28px 20px;
+  }
+}
+
+@keyframes login-twinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes login-pulse {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+@keyframes login-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-8px);
+  }
+  40%,
+  80% {
+    transform: translateX(8px);
+  }
+}

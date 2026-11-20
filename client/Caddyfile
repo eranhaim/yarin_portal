@@ -1,0 +1,43 @@
+# Caddy inside the web container: serves the React app and forwards /api to the API container.
+#
+# It listens on plain HTTP. On the server, the host's own Caddy terminates HTTPS for the
+# public domain and forwards to this container (see README "Production").
+
+{
+	servers {
+		# Trust X-Forwarded-* headers from the host's proxy (private network addresses only),
+		# so the API sees the real visitor IP address.
+		trusted_proxies static private_ranges
+	}
+}
+
+:80 {
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy api:4100
+	}
+
+	handle {
+		root * /srv
+		# Single-page app: unknown paths (/map, /admin/...) load index.html.
+		try_files {path} /index.html
+		file_server
+	}
+
+	# Built files have a content hash in their name, so they can be cached for a long time.
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+	@pages not path /assets/* /api/*
+	header @pages Cache-Control "no-cache"
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		# Avatars, posters, videos and uploads come from the Vultr Object Storage bucket.
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https://*.vultrobjects.com; media-src 'self' blob: https://*.vultrobjects.com; connect-src 'self' https://*.vultrobjects.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		-Server
+	}
+}
