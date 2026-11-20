@@ -125,10 +125,10 @@ First setup on the server:
 Deploy a new version (on the server, in the project folder):
 
 ```sh
-git pull --ff-only && docker compose up -d --build && docker image prune -f
+git pull --ff-only && docker compose up -d --build && docker image prune -f --filter label=com.docker.compose.project=yarin-portal
 ```
 
-The server holds no data: the database is MongoDB Atlas and the files are in the storage bucket.
+The cleanup step removes only the old images of this project (the server is shared with other projects). The server holds no data: the database is MongoDB Atlas and the files are in the storage bucket.
 
 Useful commands:
 
