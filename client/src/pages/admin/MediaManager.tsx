@@ -144,7 +144,7 @@ export function MediaManager({ planId, taskId, kind, assets, onChange }: Props) 
                 )}
                 <span className="media__meta">
                   {isVideo && asset.durationSeconds ? `${formatDuration(asset.durationSeconds)} · ` : ''}
-                  <span className="ltr">{formatBytes(asset.size)}</span> · {asset.fileName}
+                  <span className="ltr">{formatBytes(asset.size)}</span> · <bdi>{asset.fileName}</bdi>
                 </span>
               </div>
 

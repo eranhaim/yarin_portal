@@ -42,7 +42,7 @@ export function FileList({ files, emptyText = 'אין קבצים עדיין.' }:
           <div className="file-list__text">
             <span className="file-list__title">{file.title}</span>
             <span className="file-list__meta">
-              <span className="ltr">{formatBytes(file.size)}</span> · {file.fileName}
+              <span className="ltr">{formatBytes(file.size)}</span> · <bdi>{file.fileName}</bdi>
             </span>
           </div>
           {file.downloadUrl && (
