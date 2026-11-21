@@ -1,14 +1,23 @@
-import { useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { Avatar } from '../../components/Avatar'
+import { FileBadge } from '../../components/FileList'
 import { Board } from '../../components/Board'
 import { groupColor } from '../../lib/groups'
 import { Icon } from '../../components/Icon'
 import { TaskStatusControl } from '../../components/TaskStatusControl'
 import { api, errorMessage } from '../../lib/api'
-import { dueInfo, formatDate, formatDateTime } from '../../lib/format'
-import { taskStatus, type AdminCustomer, type PlanListItem, type PlanProgress, type TaskStatus } from '../../lib/types'
+import { dueInfo, formatBytes, formatDate, formatDateTime } from '../../lib/format'
+import {
+  taskStatus,
+  type AdminCustomer,
+  type PlanListItem,
+  type PlanProgress,
+  type Submission,
+  type TaskStatus,
+} from '../../lib/types'
 import { CustomerFormModal } from './CustomerFormModal'
+import { useInbox } from './inbox'
 import { LevelBadge } from './LevelBadge'
 
 export function CustomerDetailPage() {
@@ -25,6 +34,15 @@ function CustomerDetail({ id }: { id: string }) {
   const [busyTask, setBusyTask] = useState<string | null>(null)
   const [editOpen, setEditOpen] = useState(false)
   const [openChapter, setOpenChapter] = useState<string | null>(null)
+  const [submissions, setSubmissions] = useState<Submission[]>([])
+  const inbox = useInbox()
+
+  const submissionsByTask = useMemo(() => {
+    const map = new Map<string, Submission[]>()
+    for (const s of submissions) map.set(s.taskId, [...(map.get(s.taskId) ?? []), s])
+    return map
+  }, [submissions])
+  const unseenIds = submissions.filter((s) => !s.seenAt).map((s) => s.id)
 
   const loadProgress = useCallback(async () => {
     const res = await api<{ plan: PlanProgress | null }>(`/admin/customers/${id}/plan`)
@@ -36,11 +54,13 @@ function CustomerDetail({ id }: { id: string }) {
     Promise.all([
       api<{ customer: AdminCustomer }>(`/admin/customers/${id}`),
       api<{ plans: PlanListItem[] }>('/admin/plans'),
+      api<{ submissions: Submission[] }>(`/admin/customers/${id}/submissions`),
       loadProgress(),
     ])
-      .then(([c, p]) => {
+      .then(([c, p, s]) => {
         setCustomer(c.customer)
         setPlans(p.plans)
+        setSubmissions(s.submissions)
       })
       .catch((err) => setError(errorMessage(err)))
   }, [id, loadProgress])
@@ -77,6 +97,18 @@ function CustomerDetail({ id }: { id: string }) {
       setError(errorMessage(err))
     } finally {
       setBusyTask(null)
+    }
+  }
+
+  const markSeen = async (ids: string[]) => {
+    if (ids.length === 0) return
+    try {
+      await api('/admin/submissions/seen', { body: { ids } })
+      const now = new Date().toISOString()
+      setSubmissions((list) => list.map((s) => (ids.includes(s.id) ? { ...s, seenAt: s.seenAt ?? now } : s)))
+      await inbox.refresh()
+    } catch (err) {
+      setError(errorMessage(err))
     }
   }
 
@@ -219,6 +251,11 @@ function CustomerDetail({ id }: { id: string }) {
                   <small>משימות</small>
                 </div>
                 <div>
+                  <span>הגשות</span>
+                  <strong>{submissions.length}</strong>
+                  <small>{unseenIds.length > 0 ? `${unseenIds.length} חדשות` : 'קבצים'}</small>
+                </div>
+                <div>
                   <span>שויכה ב-</span>
                   <strong>{formatDate(progress.assignedAt)}</strong>
                 </div>
@@ -246,11 +283,21 @@ function CustomerDetail({ id }: { id: string }) {
               </section>
 
               <section className="adm-card">
-                <h2>משימות</h2>
-                <p className="adm-card__sub">אפשר לשנות את הסטטוס של כל משימה ללקוח הזה.</p>
+                <div className="adm-card__head">
+                  <div>
+                    <h2>משימות והגשות</h2>
+                    <p>אפשר לשנות את הסטטוס של כל משימה, ולהוריד את הקבצים שהלקוח הגיש.</p>
+                  </div>
+                  {unseenIds.length > 0 && (
+                    <button type="button" className="btn btn--sm" onClick={() => void markSeen(unseenIds)}>
+                      <Icon name="check" size={15} /> סימון ההגשות כנקראו
+                    </button>
+                  )}
+                </div>
                 <div className="adm-chapters">
                   {progress.chapters.map((chapter, i) => {
                     const open = openChapter === chapter.id
+                    const chapterFiles = chapter.tasks.reduce((sum, t) => sum + (submissionsByTask.get(t.id)?.length ?? 0), 0)
                     return (
                       <div key={chapter.id} className={`adm-chapter adm-chapter--${chapter.state}`} style={{ '--group': groupColor(i) } as CSSProperties}>
                         <button
@@ -261,6 +308,11 @@ function CustomerDetail({ id }: { id: string }) {
                         >
                           <span className="adm-chapter__num">{chapter.state === 'completed' ? <Icon name="check" size={14} /> : i + 1}</span>
                           <span className="adm-chapter__title">{chapter.title}</span>
+                          {chapterFiles > 0 && (
+                            <span className="adm-chapter__files" title="קבצים שהוגשו">
+                              <Icon name="clip" size={14} /> {chapterFiles}
+                            </span>
+                          )}
                           <span className="adm-chapter__count">
                             {chapter.completedCount}/{chapter.tasks.length}
                           </span>
@@ -271,18 +323,47 @@ function CustomerDetail({ id }: { id: string }) {
                             {chapter.tasks.length === 0 && <li className="adm-muted">אין משימות בשלב הזה.</li>}
                             {chapter.tasks.map((task) => {
                               const due = dueInfo(task.dueAt, task.completed)
+                              const files = submissionsByTask.get(task.id) ?? []
                               return (
-                                <li key={task.id} className="adm-task-row">
-                                  <div>
-                                    <span className="adm-task-row__title">{task.title}</span>
-                                    {due && <span className={`adm-due adm-due--${due.tone}`}>{due.label}</span>}
+                                <li key={task.id}>
+                                  <div className="adm-task-row">
+                                    <div>
+                                      <span className="adm-task-row__title">{task.title}</span>
+                                      {due && <span className={`adm-due adm-due--${due.tone}`}>{due.label}</span>}
+                                    </div>
+                                    <TaskStatusControl
+                                      size="sm"
+                                      value={taskStatus(task)}
+                                      disabled={busyTask === task.id}
+                                      onChange={(s) => void setStatus(task.id, s)}
+                                    />
                                   </div>
-                                  <TaskStatusControl
-                                    size="sm"
-                                    value={taskStatus(task)}
-                                    disabled={busyTask === task.id}
-                                    onChange={(s) => void setStatus(task.id, s)}
-                                  />
+                                  {files.length > 0 && (
+                                    <ul className="adm-subs">
+                                      {files.map((s) => (
+                                        <li key={s.id} className={`adm-subs__item${s.seenAt ? '' : ' is-new'}`}>
+                                          <FileBadge fileName={s.fileName} />
+                                          <span className="adm-subs__text">
+                                            <bdi>{s.fileName}</bdi>
+                                            <small>
+                                              {formatDateTime(s.createdAt)} · <span className="ltr">{formatBytes(s.size)}</span>
+                                              {!s.seenAt && <span className="chip chip--warn">חדש</span>}
+                                            </small>
+                                            {s.note && <span className="adm-subs__note">„{s.note}”</span>}
+                                          </span>
+                                          {s.downloadUrl && (
+                                            <a
+                                              className="btn btn--sm"
+                                              href={s.downloadUrl}
+                                              onClick={() => !s.seenAt && void markSeen([s.id])}
+                                            >
+                                              <Icon name="download" size={15} /> הורדה
+                                            </a>
+                                          )}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
                                 </li>
                               )
                             })}

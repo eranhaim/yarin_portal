@@ -5,6 +5,7 @@ import { Icon } from '../../components/Icon'
 import { api, errorMessage } from '../../lib/api'
 import type { AdminCustomer, PlanListItem } from '../../lib/types'
 import { CustomerFormModal } from './CustomerFormModal'
+import { useInbox } from './inbox'
 import { LevelBadge } from './LevelBadge'
 
 export function CustomersPage() {
@@ -13,6 +14,7 @@ export function CustomersPage() {
   const [query, setQuery] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [formOpen, setFormOpen] = useState(false)
+  const { summary } = useInbox()
 
   useEffect(() => {
     Promise.all([api<{ customers: AdminCustomer[] }>('/admin/customers'), api<{ plans: PlanListItem[] }>('/admin/plans')])
@@ -79,8 +81,8 @@ export function CustomersPage() {
         <>
           {filtered.length === 0 && <p className="empty-note">אין לקוחות שמתאימים ל„{query}”.</p>}
           <ul className="adm-customers">
-            {filtered.map((c) => (
-              <li key={c.id}>
+            {filtered.map((c, i) => (
+              <li key={c.id} className="adm-stagger" style={{ animationDelay: `${Math.min(i, 12) * 45}ms` }}>
                 <Link to={`/admin/customers/${c.id}`} className={`adm-customer${c.active ? '' : ' is-inactive'}`}>
                   <div className="adm-customer__head">
                     <Avatar name={c.name} url={c.avatarUrl} size={60} />
@@ -89,6 +91,11 @@ export function CustomersPage() {
                       {c.company && <span className="adm-customer__company">{c.company}</span>}
                     </div>
                     {!c.active && <span className="chip chip--danger">לא פעיל</span>}
+                    {(summary.byCustomer[c.id] ?? 0) > 0 && (
+                      <span className="chip chip--warn adm-customer__new" title="הגשות חדשות">
+                        <Icon name="bell" size={13} /> {summary.byCustomer[c.id]}
+                      </span>
+                    )}
                   </div>
                   <div className="adm-customer__contact">
                     <span>

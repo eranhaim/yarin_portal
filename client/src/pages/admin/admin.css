@@ -1325,3 +1325,330 @@
 .media .alert .icon-btn {
   margin-inline-start: auto;
 }
+
+/* ---------- Motion ---------- */
+
+.adm-main > * {
+  animation: rise-in 0.4s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+.adm-stagger {
+  animation: rise-in 0.45s cubic-bezier(0.2, 0.8, 0.3, 1) backwards;
+}
+
+/* ---------- Top bar: signed-in admin and the inbox bell ---------- */
+
+.adm-top__me {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.adm-top__inbox {
+  position: relative;
+}
+
+.adm-top__inbox.has-unread svg {
+  transform-origin: 50% 10%;
+  animation: wiggle 1s ease 0.3s 3;
+}
+
+.adm-top__badge {
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--red);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1;
+  animation: pop-in 0.35s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+
+@media (max-width: 760px) {
+  .adm-top__me {
+    display: none;
+  }
+}
+
+.adm-customer__new {
+  animation: wiggle 1s ease 0.6s 2;
+}
+
+/* ---------- Tabs ---------- */
+
+.adm-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.adm-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 16px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.adm-tab[aria-selected='true'] {
+  background: var(--gold);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.adm-tab__count {
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--red);
+  color: #fff;
+  font-size: 0.75rem;
+}
+
+/* ---------- Inbox ---------- */
+
+.adm-inbox {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.adm-inbox__item {
+  display: grid;
+  grid-template-columns: minmax(170px, 1fr) minmax(0, 1.6fr) minmax(0, 1.2fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 2.5px solid var(--ink);
+  border-radius: var(--radius-lg);
+  background: var(--paper);
+  box-shadow: 4px 4px 0 var(--ink);
+  animation: rise-in 0.4s cubic-bezier(0.2, 0.8, 0.3, 1) backwards;
+}
+
+.adm-inbox__item.is-new {
+  border-inline-start-width: 10px;
+  border-inline-start-color: var(--red);
+  background: #fff8ec;
+}
+
+.adm-inbox__who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.adm-inbox__who .avatar {
+  border: 2px solid var(--ink);
+}
+
+.adm-inbox__who span,
+.adm-inbox__task,
+.adm-inbox__file span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.adm-inbox__who small,
+.adm-inbox__task-meta,
+.adm-inbox__file small {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.adm-inbox__task-title {
+  color: var(--ink);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.adm-inbox__note {
+  margin-top: 4px;
+  color: var(--text);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.adm-inbox__file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.adm-inbox__file bdi {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adm-inbox__actions {
+  display: flex;
+  gap: 6px;
+}
+
+@media (max-width: 1000px) {
+  .adm-inbox__item {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
+/* ---------- Homework under a task (customer page) ---------- */
+
+.adm-chapter__files {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--blue);
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.adm-subs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.adm-subs__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1.5px solid var(--ink);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.adm-subs__item.is-new {
+  border-color: var(--red);
+  background: #fff8ec;
+}
+
+.adm-subs__item .file-badge {
+  width: 34px;
+  height: 40px;
+  font-size: 0.6rem;
+}
+
+.adm-subs__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.adm-subs__text bdi {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adm-subs__text small {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.adm-subs__note {
+  color: var(--text);
+  font-size: 0.82rem;
+  font-style: italic;
+}
+
+/* ---------- Admins ---------- */
+
+.adm-admins {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.adm-admin {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 2.5px solid var(--ink);
+  border-radius: var(--radius-lg);
+  background: var(--paper);
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+.adm-admin .avatar {
+  border: 2px solid var(--ink);
+}
+
+.adm-admin__crown {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--ink);
+}
+
+.adm-admin__who {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.adm-admin__who strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 1.05rem;
+}
+
+.adm-admin__who small {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.adm-admin__who small.ltr {
+  text-align: right;
+}
+
+.adm-admin__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}

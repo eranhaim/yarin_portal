@@ -358,21 +358,20 @@
 }
 
 /* ---------- Map page ---------- */
+/* The board fills the width (a landscape rectangle facing the customer); the cards sit under it. */
 
 .cx-map {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 28px;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
 }
 
 .cx-map__board {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  /* The whole board fits on the screen (under the top bar). */
-  max-width: max(560px, min(900px, calc(100dvh - 150px)));
-  width: 100%;
+  /* Fits the screen height too: the board is about 1.7 times wider than tall. */
+  width: min(100%, max(640px, calc((100dvh - 140px) * 1.7)));
   margin-inline: auto;
 }
 
@@ -387,19 +386,26 @@
 }
 
 .cx-map__panel {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  position: sticky;
-  top: 96px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 22px;
+  align-items: start;
 }
 
-@media (max-width: 1100px) {
-  .cx-map {
-    grid-template-columns: 1fr;
-  }
+.cx-map__panel > * {
+  animation: rise-in 0.5s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
 
-  /* One column: the current level card, then the board, then the rest. */
+.cx-map__panel > :nth-child(2) {
+  animation-delay: 0.08s;
+}
+
+.cx-map__panel > :nth-child(3) {
+  animation-delay: 0.16s;
+}
+
+@media (max-width: 720px) {
+  /* Phones: the current level first, then the board, then the rest. */
   .cx-map__panel {
     display: contents;
   }
@@ -410,15 +416,6 @@
 
   .cx-map__panel .cx-current {
     order: -1;
-    width: 100%;
-    max-width: 560px;
-    margin-inline: auto;
-  }
-
-  .cx-map__panel > .cx-card:not(.cx-current) {
-    width: 100%;
-    max-width: 560px;
-    margin-inline: auto;
   }
 }
 
@@ -570,8 +567,9 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  width: min(40%, calc(var(--u, 60px) * 2.2));
-  aspect-ratio: 3 / 4;
+  /* Landscape cards on a landscape board, so they fit under the banner. */
+  width: min(34%, calc(var(--u, 60px) * 2.5));
+  aspect-ratio: 4 / 3;
   padding: 10px;
   border: 2.5px solid var(--ink);
   border-radius: 12px;
@@ -585,6 +583,11 @@
   text-align: center;
   text-decoration: none;
   transition: transform 0.15s ease;
+}
+
+.board--portrait .cx-deck {
+  width: min(42%, calc(var(--u, 60px) * 2.2));
+  aspect-ratio: 3 / 4;
 }
 
 .cx-deck--videos {
@@ -963,4 +966,224 @@
 .cx-library__head p {
   color: var(--text);
   text-align: center;
+}
+
+/* ---------- Motion: page entrance, cards dealt onto the table ---------- */
+
+.cx-page {
+  animation: rise-in 0.45s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+.cx-deed {
+  transform-origin: 50% 0;
+  animation: deed-in 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
+}
+
+@keyframes deed-in {
+  from {
+    opacity: 0;
+    transform: perspective(900px) rotateX(-35deg) translateY(-12px);
+  }
+}
+
+.cx-task {
+  animation: deal-in 0.5s cubic-bezier(0.2, 1, 0.3, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 70ms + 200ms);
+}
+
+@keyframes deal-in {
+  from {
+    opacity: 0;
+    transform: translateX(-40px) rotate(-3deg);
+  }
+}
+
+.cx-task--completed .cx-task__number {
+  animation: pop-in 0.4s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms + 450ms);
+}
+
+.cx-celebrate > svg {
+  animation: wiggle 0.9s ease 0.4s 2;
+}
+
+.cx-task__media--sent {
+  color: var(--blue);
+}
+
+/* ---------- Level hero with the mascot ---------- */
+
+.cx-level__hero {
+  position: relative;
+}
+
+.cx-level__mascot {
+  position: absolute;
+  z-index: 2;
+  top: 2px;
+  inset-inline-start: 14px;
+  /* Stays inside the colored band, above the description. */
+  width: 84px;
+  height: 112px;
+  pointer-events: none;
+}
+
+.cx-level__hero .cx-deed__band {
+  padding-inline: 140px;
+}
+
+@media (max-width: 640px) {
+  .cx-level__mascot {
+    width: 80px;
+    height: 106px;
+  }
+
+  .cx-level__hero .cx-deed__band {
+    padding-inline: 20px 88px;
+  }
+}
+
+.cx-empty__mascot {
+  width: 150px;
+  height: 200px;
+  margin: -12px 0 -8px;
+}
+
+/* ---------- Homework (task page) ---------- */
+
+.cx-homework {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-color: var(--blue);
+  box-shadow: 5px 5px 0 var(--blue);
+}
+
+.cx-homework__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.cx-homework__head h2 {
+  font-size: 1.35rem;
+}
+
+.cx-homework__head p {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.cx-homework__icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border: 2.5px solid var(--ink);
+  border-radius: 12px;
+  background: var(--blue);
+  color: #fff;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.cx-homework__sent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 2px solid var(--success);
+  border-radius: 10px;
+  background: var(--success-bg);
+  color: var(--success);
+  font-weight: 800;
+  animation: pop-in 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+
+.cx-homework__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cx-homework__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: #fff;
+  animation: rise-in 0.35s ease both;
+}
+
+.cx-homework__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cx-homework__name {
+  overflow: hidden;
+  color: var(--ink);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cx-homework__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.cx-homework__seen {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--success);
+  font-weight: 700;
+}
+
+.cx-homework__note {
+  margin-top: 2px;
+  color: var(--text);
+  font-size: 0.85rem;
+  white-space: pre-line;
+}
+
+.cx-homework__drop {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 2px dashed var(--ink);
+  border-radius: 12px;
+  background: var(--paper-2);
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.cx-homework__drop.is-over {
+  border-color: var(--blue);
+  background: var(--info-bg);
+  transform: scale(1.01);
+}
+
+.cx-homework__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
 }

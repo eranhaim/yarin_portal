@@ -9,11 +9,12 @@ import { errorMessage } from '../../lib/api'
 import { dueInfo } from '../../lib/format'
 import { taskStatus, type TaskStatus } from '../../lib/types'
 import { useCustomer } from './customerContext'
+import { HomeworkPanel } from './HomeworkPanel'
 import { NoPlan } from './NoPlan'
 
 export function TaskPage() {
   const { chapterId, taskId } = useParams()
-  const { me, plan, updateTask } = useCustomer()
+  const { me, plan, updateTask, applyPlan } = useCustomer()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -112,6 +113,8 @@ export function TaskPage() {
       {task.videos.length === 0 && task.files.length === 0 && !task.description && (
         <p className="empty-note">אין סרטונים או קבצים למשימה הזו.</p>
       )}
+
+      <HomeworkPanel task={task} onPlan={applyPlan} />
 
       {status !== 'completed' && (
         <div className="cx-taskpage__cta">

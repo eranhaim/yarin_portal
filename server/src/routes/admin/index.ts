@@ -1,27 +1,54 @@
 import { Router } from 'express'
 import { z } from 'zod'
-import { endSession, isAdminPassword, readSession, requireAdmin, startSession } from '../../auth/session.ts'
+import { accountFingerprint, currentAdmin, isOwnerPassword, OWNER, ownerFingerprint, requireAdmin } from '../../auth/admin.ts'
+import { DUMMY_HASH, verifyPassword } from '../../auth/password.ts'
+import { endSession, startSession } from '../../auth/session.ts'
 import { dbState } from '../../db.ts'
 import { loginRateLimit, parseBody } from '../../http.ts'
+import { Admin } from '../../models/Admin.ts'
 import { Customer } from '../../models/Customer.ts'
 import { Plan } from '../../models/Plan.ts'
 import { storageStatus } from '../../storage.ts'
+import { adminsRouter } from './admins.ts'
+import { assetsRouter } from './assets.ts'
 import { customersRouter } from './customers.ts'
 import { plansRouter } from './plans.ts'
-import { assetsRouter } from './assets.ts'
+import { submissionsRouter } from './submissions.ts'
 
 export const adminRouter = Router()
 
-// ---------- Admin session (password from ADMIN_PASSWORD in .env) ----------
+// ---------- Admin session ----------
+// With an email: an admin account. Without an email: the main password (ADMIN_PASSWORD in .env).
+
+const loginSchema = z.object({
+  email: z.string().trim().toLowerCase().max(254).default(''),
+  password: z.string().min(1, 'הזינו סיסמה').max(200),
+})
 
 adminRouter.post('/login', loginRateLimit(), async (req, res) => {
-  const body = parseBody(z.object({ password: z.string().min(1, 'הזינו את סיסמת המנהל').max(200) }), req, res)
+  const body = parseBody(loginSchema, req, res)
   if (!body) return
-  if (!isAdminPassword(body.password)) {
-    res.status(401).json({ error: 'סיסמה שגויה' })
+
+  if (!body.email) {
+    if (!isOwnerPassword(body.password)) {
+      res.status(401).json({ error: 'סיסמה שגויה' })
+      return
+    }
+    await startSession(res, 'admin', OWNER, ownerFingerprint)
+    res.json({ ok: true })
     return
   }
-  await startSession(res, 'admin', 'admin')
+
+  const admin = await Admin.findOne({ email: body.email }).select('+passwordHash')
+  // Check a dummy hash when the email is unknown, so both cases take the same time.
+  const ok = await verifyPassword(body.password, admin?.passwordHash ?? DUMMY_HASH)
+  if (!admin || !ok) {
+    res.status(401).json({ error: 'האימייל או הסיסמה שגויים' })
+    return
+  }
+  admin.lastLoginAt = new Date()
+  await admin.save()
+  await startSession(res, 'admin', admin.id as string, accountFingerprint(admin.passwordHash))
   res.json({ ok: true })
 })
 
@@ -31,8 +58,8 @@ adminRouter.post('/logout', (_req, res) => {
 })
 
 adminRouter.get('/me', async (req, res) => {
-  const ok = Boolean(await readSession(req, 'admin'))
-  res.status(ok ? 200 : 401).json({ admin: ok })
+  const admin = await currentAdmin(req)
+  res.status(admin ? 200 : 401).json({ admin })
 })
 
 // ---------- Everything below needs an admin session ----------
@@ -50,4 +77,6 @@ adminRouter.get('/status', async (_req, res) => {
 
 adminRouter.use('/customers', customersRouter)
 adminRouter.use('/plans', plansRouter)
+adminRouter.use('/admins', adminsRouter)
 adminRouter.use(assetsRouter)
+adminRouter.use(submissionsRouter)

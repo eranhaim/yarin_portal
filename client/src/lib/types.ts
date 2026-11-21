@@ -91,9 +91,44 @@ export type PlanProgress = Omit<Plan, 'chapters' | 'customerCount'> & {
   chapters: ProgressChapter[]
 }
 
-export type MyTask = ProgressTask & { videoCount: number; fileCount: number; videos: Asset[]; files: Asset[] }
+/** A homework file a customer handed in for a task. */
+export type Submission = {
+  id: string
+  customerId: string
+  planId: string
+  taskId: string
+  planTitle: string
+  chapterTitle: string
+  taskTitle: string
+  fileName: string
+  contentType: string
+  size: number
+  note: string
+  createdAt: string
+  seenAt: string | null
+  url: string | null
+  downloadUrl: string | null
+}
+
+/** A submission in the admin inbox, with who sent it. */
+export type InboxSubmission = Submission & { customer: { id: string; name: string; avatarUrl: string | null } | null }
+
+export type SubmissionSummary = { unread: number; byCustomer: Record<string, number>; latestAt: string | null }
+
+export type MyTask = ProgressTask & {
+  videoCount: number
+  fileCount: number
+  videos: Asset[]
+  files: Asset[]
+  submissions: Submission[]
+}
 export type MyChapter = Omit<ProgressChapter, 'tasks'> & { tasks: MyTask[] }
 export type MyPlan = Omit<PlanProgress, 'chapters'> & { chapters: MyChapter[]; videos: Asset[]; files: Asset[] }
+
+/** Who is signed in to the admin panel ("owner" = the main password from the server settings). */
+export type AdminIdentity = { id: string; name: string; email: string | null; owner: boolean }
+
+export type AdminAccount = { id: string; name: string; email: string; createdAt: string; lastLoginAt: string | null }
 
 export type AdminStatus = {
   db: string

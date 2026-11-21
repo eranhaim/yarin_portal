@@ -1,15 +1,17 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { colorFromString, initials } from '../lib/format'
 import { groupColor } from '../lib/groups'
 import type { ChapterState } from '../lib/types'
 import { Icon, type IconName } from './Icon'
+import { Mascot } from './mascot/Mascot'
 import './Board.css'
 
-// A board-game map: a square loop of squares around the board's edge.
+// A board-game map: a loop of squares around the edge of a rectangular board.
 // Each level (chapter) is a color group: a "station" square with the level name, then one square per task.
 // The player's token stands on the first open task and hops forward when tasks are completed.
+// Wide screens get a landscape board; narrow screens get the same loop standing up (portrait).
 
-export type BoardTask = { id: string; title: string; started: boolean; completed: boolean }
+export type BoardTask = { id: string; title: string; started: boolean; completed: boolean; submitted?: boolean }
 export type BoardChapter = { id: string; title: string; state: ChapterState; tasks: BoardTask[] }
 
 /** position = index of the player's task over all tasks in plan order; the number of tasks = finished. */
@@ -32,6 +34,8 @@ type Props = {
   title?: string
   /** Extra content in the middle of the board (hidden on small boards). */
   center?: ReactNode
+  /** Show the main player as the 3D mascot instead of an avatar token. */
+  mascot?: boolean
 }
 
 // ---------- Layout ----------
@@ -56,20 +60,33 @@ type Content =
   | { kind: 'task'; chapter: number; task: number; flat: number }
   | { kind: 'filler'; filler: FillerKind }
 
-/** Grid cell of perimeter square i. Geometry is left-to-right; the path starts at the bottom-right corner and goes left. */
-function cell(i: number, size: number): { row: number; col: number; side: Side } {
-  const e = size - 1
-  if (i === 0) return { row: size, col: size, side: 'corner' }
-  if (i < e) return { row: size, col: size - i, side: 'bottom' }
-  if (i === e) return { row: size, col: 1, side: 'corner' }
-  if (i < 2 * e) return { row: size - (i - e), col: 1, side: 'left' }
-  if (i === 2 * e) return { row: 1, col: 1, side: 'corner' }
-  if (i < 3 * e) return { row: 1, col: 1 + (i - 2 * e), side: 'top' }
-  if (i === 3 * e) return { row: 1, col: size, side: 'corner' }
-  return { row: 1 + (i - 3 * e), col: size, side: 'right' }
+/** Perimeter indexes of the four corners, in path order (start, bottom-left, top-left, top-right). */
+function cornerIndexes(cols: number, rows: number): [number, number, number, number] {
+  return [0, cols - 1, cols + rows - 2, 2 * cols + rows - 3]
 }
 
-function buildBoard(chapters: BoardChapter[]) {
+/** Grid cell of perimeter square i. Geometry is left-to-right; the path starts at the bottom-right corner and goes left. */
+function cell(i: number, cols: number, rows: number): { row: number; col: number; side: Side } {
+  const [, bottomLeft, topLeft, topRight] = cornerIndexes(cols, rows)
+  if (i === 0) return { row: rows, col: cols, side: 'corner' }
+  if (i < bottomLeft) return { row: rows, col: cols - i, side: 'bottom' }
+  if (i === bottomLeft) return { row: rows, col: 1, side: 'corner' }
+  if (i < topLeft) return { row: rows - (i - bottomLeft), col: 1, side: 'left' }
+  if (i === topLeft) return { row: 1, col: 1, side: 'corner' }
+  if (i < topRight) return { row: 1, col: 1 + (i - topLeft), side: 'top' }
+  if (i === topRight) return { row: 1, col: cols, side: 'corner' }
+  return { row: 1 + (i - topRight), col: cols, side: 'right' }
+}
+
+/** A rectangle about 1.75 times longer than it is deep, with room for every square on its edge. */
+function boardShape(squaresNeeded: number, portrait: boolean): { cols: number; rows: number } {
+  for (let short = 5; ; short++) {
+    const long = Math.max(short, Math.round(short * 1.75))
+    if (2 * (long - 1) + 2 * (short - 1) >= squaresNeeded) return portrait ? { cols: short, rows: long } : { cols: long, rows: short }
+  }
+}
+
+function buildBoard(chapters: BoardChapter[], portrait: boolean) {
   // Stations and tasks in path order, with filler squares between levels to fill the loop.
   const groups: Content[][] = []
   let flat = 0
@@ -78,8 +95,9 @@ function buildBoard(chapters: BoardChapter[]) {
   })
   const contentCount = groups.reduce((sum, g) => sum + g.length, 0)
   // 4 corners and the finish square are fixed; the other squares hold the content.
-  const size = Math.max(6, Math.ceil((contentCount + 9) / 4))
-  const perimeter = 4 * (size - 1)
+  const { cols, rows } = boardShape(contentCount + 5, portrait)
+  const perimeter = 2 * (cols - 1) + 2 * (rows - 1)
+  const corners = cornerIndexes(cols, rows)
   let fillers = perimeter - 5 - contentCount
   const gaps = Math.max(1, groups.length)
   const content: Content[] = []
@@ -91,12 +109,13 @@ function buildBoard(chapters: BoardChapter[]) {
     fillers -= share
   }
 
-  const corners: CornerKind[] = ['start', 'meeting', 'coffee', 'review']
+  const cornerKinds: CornerKind[] = ['start', 'meeting', 'coffee', 'review']
   const squares: Square[] = []
   let next = 0
   for (let i = 0; i < perimeter; i++) {
-    const place = { index: i, ...cell(i, size) }
-    if (i % (size - 1) === 0) squares.push({ ...place, kind: 'corner', corner: corners[i / (size - 1)]! })
+    const place = { index: i, ...cell(i, cols, rows) }
+    const corner = corners.indexOf(i)
+    if (corner !== -1) squares.push({ ...place, kind: 'corner', corner: cornerKinds[corner]! })
     else if (i === perimeter - 1) squares.push({ ...place, kind: 'finish' })
     else squares.push({ ...place, ...content[next++]! })
   }
@@ -110,14 +129,35 @@ function buildBoard(chapters: BoardChapter[]) {
   /** Square index of a player position (finished players stand on the finish square). */
   const squareOf = (position: number) => (position >= flat ? finish : (taskSquare.get(position) ?? 0))
 
-  return { size, squares, squareOf, taskCount: flat }
+  return { cols, rows, squares, squareOf, taskCount: flat }
 }
 
-/** Center of grid line k (1-based) as a percentage of the board. */
-function lineCenter(k: number, size: number): number {
-  const total = size - 2 + 2 * CORNER
-  const x = k === 1 ? CORNER / 2 : k === size ? total - CORNER / 2 : CORNER + (k - 2) + 0.5
+/** Board length in square units, for `count` grid lines (two of them corners). */
+const spanOf = (count: number) => count - 2 + 2 * CORNER
+
+/** Center of grid line k (1-based, of `count`) as a percentage of the board. */
+function lineCenter(k: number, count: number): number {
+  const total = spanOf(count)
+  const x = k === 1 ? CORNER / 2 : k === count ? total - CORNER / 2 : CORNER + (k - 2) + 0.5
   return (x / total) * 100
+}
+
+/** Portrait below this board width, so squares stay big enough on phones. */
+const PORTRAIT_BELOW_PX = 640
+
+/** True when the element is narrower than PORTRAIT_BELOW_PX. Starts from the window width, so phones get it right on the first paint. */
+function useNarrow(ref: RefObject<HTMLElement | null>): boolean {
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.innerWidth < PORTRAIT_BELOW_PX + 32)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const update = () => setNarrow(el.getBoundingClientRect().width < PORTRAIT_BELOW_PX)
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [ref])
+  return narrow
 }
 
 const CORNER_INFO: Record<CornerKind, { icon: IconName; title: string; note: string }> = {
@@ -181,8 +221,11 @@ export function Board({
   plain = false,
   title,
   center,
+  mascot = false,
 }: Props) {
-  const { size, squares, squareOf, taskCount } = useMemo(() => buildBoard(chapters), [chapters])
+  const frame = useRef<HTMLDivElement>(null)
+  const portrait = useNarrow(frame)
+  const { cols, rows, squares, squareOf, taskCount } = useMemo(() => buildBoard(chapters, portrait), [chapters, portrait])
 
   const target = player ? squareOf(player.position) : 0
   const fromSquare = player && animateFrom !== null && animateFrom < player.position ? squareOf(animateFrom) : null
@@ -193,13 +236,21 @@ export function Board({
   useEffect(() => {
     arrive.current = onArrive
   })
+  /** True once the welcome walk is done; after that the token just follows the player. */
+  const walked = useRef(false)
 
-  // Walk the token from the last seen square to the current one.
+  // Walk the token from the last seen square to the current one (once). Later, when the player's
+  // position or the board's shape changes (admin status change, phone rotation), jump straight there:
+  // square indexes depend on the shape, so an old index would point at the wrong square.
   useEffect(() => {
     if (!player) return
-    if (fromSquare === null || fromSquare >= target || prefersReducedMotion()) {
+    if (walked.current || fromSquare === null || fromSquare >= target || prefersReducedMotion()) {
       setAt(target)
-      arrive.current?.()
+      setHopping(false)
+      if (!walked.current) {
+        walked.current = true
+        arrive.current?.()
+      }
       return
     }
     const steps = target - fromSquare
@@ -224,22 +275,28 @@ export function Board({
     }
     later(t, () => {
       setHopping(false)
+      walked.current = true
       arrive.current?.()
     })
     later(t + 1600, () => setDice(null))
-    return () => timers.forEach((id) => window.clearTimeout(id))
-    // Run once per board (the parent remounts the board for a new plan).
+    return () => {
+      timers.forEach((id) => window.clearTimeout(id))
+      setDice(null)
+    }
+    // fromSquare/player come from the same render as target; cols/rows mark a new board shape.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [target, cols, rows])
 
   const tokenAt = (squareIndex: number, slot = 0, of = 1): CSSProperties => {
     const sq = squares[squareIndex] ?? squares[0]!
-    const unit = 100 / (size - 2 + 2 * CORNER)
-    const cols = of <= 1 ? 1 : of <= 4 ? 2 : 3
-    const rows = Math.ceil(of / cols)
-    const dx = of <= 1 ? 0 : ((slot % cols) - (cols - 1) / 2) * unit * 0.42
-    const dy = of <= 1 ? 0 : (Math.floor(slot / cols) - (rows - 1) / 2) * unit * 0.42
-    return { left: `${lineCenter(sq.col, size) + dx}%`, top: `${lineCenter(sq.row, size) + dy}%` }
+    // One square unit as a percentage of the board's width and height.
+    const unitX = 100 / spanOf(cols)
+    const unitY = 100 / spanOf(rows)
+    const perRow = of <= 1 ? 1 : of <= 4 ? 2 : 3
+    const lines = Math.ceil(of / perRow)
+    const dx = of <= 1 ? 0 : ((slot % perRow) - (perRow - 1) / 2) * unitX * 0.42
+    const dy = of <= 1 ? 0 : (Math.floor(slot / perRow) - (lines - 1) / 2) * unitY * 0.42
+    return { left: `${lineCenter(sq.col, cols) + dx}%`, top: `${lineCenter(sq.row, rows) + dy}%` }
   }
 
   // Crowd tokens grouped per square, so they do not cover each other.
@@ -255,11 +312,16 @@ export function Board({
 
   const currentSquare = player ? target : -1
   // minmax(0, …) keeps every square at its share, even when its text is long.
-  const template = `minmax(0, ${CORNER}fr) repeat(${size - 2}, minmax(0, 1fr)) minmax(0, ${CORNER}fr)`
+  const template = (count: number) => `minmax(0, ${CORNER}fr) repeat(${count - 2}, minmax(0, 1fr)) minmax(0, ${CORNER}fr)`
+  const finished = Boolean(player && player.position >= taskCount)
 
   return (
-    <div className={`board${plain ? ' board--plain' : ''}`} style={{ '--total': size - 2 + 2 * CORNER } as CSSProperties}>
-      <div className="board__grid" dir="ltr" style={{ gridTemplateColumns: template, gridTemplateRows: template }}>
+    <div
+      ref={frame}
+      className={`board${plain ? ' board--plain' : ''}${portrait ? ' board--portrait' : ''}`}
+      style={{ '--total-w': spanOf(cols), '--total-h': spanOf(rows) } as CSSProperties}
+    >
+      <div className="board__grid" dir="ltr" style={{ gridTemplateColumns: template(cols), gridTemplateRows: template(rows) }}>
         {squares.map((sq) => (
           <BoardSquare
             key={sq.index}
@@ -267,13 +329,12 @@ export function Board({
             chapters={chapters}
             plain={plain}
             isCurrent={sq.index === currentSquare}
-            taskCount={taskCount}
             onSelectTask={onSelectTask}
             onSelectChapter={onSelectChapter}
           />
         ))}
 
-        <div className="board__center" style={{ gridRow: `2 / ${size}`, gridColumn: `2 / ${size}` }} dir="rtl">
+        <div className="board__center" style={{ gridRow: `2 / ${rows}`, gridColumn: `2 / ${cols}` }} dir="rtl">
           {title && (
             <div className="board__banner">
               <span className="board__banner-eyebrow">המסע העסקי</span>
@@ -297,7 +358,24 @@ export function Board({
         </div>
       </div>
 
-      {player && (
+      {player && mascot && (
+        <span className="board__token board__token--mascot" style={tokenAt(at)} aria-label={`המיקום של ${player.name}`} role="img">
+          <Mascot
+            pose={finished && !hopping ? 'cheer' : 'idle'}
+            hopKey={at}
+            fallback={
+              <span className="board__hop">
+                <TokenFace player={player} />
+              </span>
+            }
+          />
+          <span className="board__me">
+            <TokenFace player={player} />
+          </span>
+        </span>
+      )}
+
+      {player && !mascot && (
         <span className="board__token board__token--main" style={tokenAt(at)} aria-label={`המיקום של ${player.name}`} role="img">
           {/* A new key per square replays the hop animation. */}
           <span key={at} className={`board__hop${hopping ? ' is-hopping' : ''}`}>
@@ -341,13 +419,13 @@ type SquareProps = {
   chapters: BoardChapter[]
   plain: boolean
   isCurrent: boolean
-  taskCount: number
   onSelectTask?: (chapterIndex: number, taskIndex: number) => void
   onSelectChapter?: (chapterIndex: number) => void
 }
 
 function BoardSquare({ sq, chapters, plain, isCurrent, onSelectTask, onSelectChapter }: SquareProps) {
-  const place: CSSProperties = { gridRow: sq.row, gridColumn: sq.col }
+  // --i staggers the squares' entrance animation around the loop.
+  const place = { gridRow: sq.row, gridColumn: sq.col, '--i': sq.index } as CSSProperties
   const sideClass = `sq sq--${sq.side}`
 
   if (sq.kind === 'corner') {
@@ -426,6 +504,11 @@ function BoardSquare({ sq, chapters, plain, isCurrent, onSelectTask, onSelectCha
         </span>
       )}
       {status === 'done' && <span className="sq__stamp">בוצע</span>}
+      {!plain && task.submitted && (
+        <span className="sq__clip" title="הוגש">
+          <Icon name="clip" size={12} />
+        </span>
+      )}
       {status === 'started' && <span className="sq__dot" title="בתהליך" />}
     </>
   )

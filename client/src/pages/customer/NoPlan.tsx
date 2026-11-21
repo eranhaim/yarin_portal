@@ -1,12 +1,9 @@
-import { Die } from '../../components/Board'
+import { Mascot } from '../../components/mascot/Mascot'
 
 export function NoPlan({ name }: { name: string }) {
   return (
     <div className="cx-empty">
-      <span className="cx-empty__dice" aria-hidden="true">
-        <Die value={5} />
-        <Die value={2} />
-      </span>
+      <Mascot className="cx-empty__mascot" pose="wave" />
       <h2>היי {name.split(' ')[0]}, המסע שלך כמעט מוכן</h2>
       <p>ירין מכין עבורך את התוכנית. לוח המשחק יופיע כאן ברגע שהיא תהיה מוכנה.</p>
     </div>

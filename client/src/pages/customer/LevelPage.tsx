@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { groupColor } from '../../lib/groups'
 import { Icon } from '../../components/Icon'
+import { Mascot } from '../../components/mascot/Mascot'
 import { StatusPill } from '../../components/TaskStatusControl'
 import { errorMessage } from '../../lib/api'
 import { dueInfo } from '../../lib/format'
@@ -68,6 +69,7 @@ export function LevelPage() {
       </Link>
 
       <header className="cx-deed cx-level__hero">
+        <Mascot className="cx-level__mascot" pose={chapter.state === 'completed' ? 'cheer' : 'wave'} />
         <div className="cx-deed__band">
           <span className="cx-deed__eyebrow">
             שלב {index + 1} מתוך {plan.chapters.length}
@@ -115,7 +117,7 @@ export function LevelPage() {
             const status = taskStatus(task)
             const due = dueInfo(task.dueAt, task.completed)
             return (
-              <li key={task.id} className={`cx-task cx-task--${status}`}>
+              <li key={task.id} className={`cx-task cx-task--${status}`} style={{ '--i': i } as CSSProperties}>
                 <Link to={`/level/${chapter.id}/task/${task.id}`} className="cx-task__link">
                   <span className="cx-task__number">{task.completed ? <Icon name="check" size={18} /> : i + 1}</span>
                   <span className="cx-task__body">
@@ -130,6 +132,11 @@ export function LevelPage() {
                       {task.fileCount > 0 && (
                         <span className="cx-task__media">
                           <Icon name="file" size={14} /> {task.fileCount}
+                        </span>
+                      )}
+                      {task.submissions.length > 0 && (
+                        <span className="cx-task__media cx-task__media--sent">
+                          <Icon name="clip" size={14} /> {task.submissions.length === 1 ? 'הוגש קובץ' : `הוגשו ${task.submissions.length} קבצים`}
                         </span>
                       )}
                     </span>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { Avatar } from '../../components/Avatar'
 import { Icon } from '../../components/Icon'
 import { Logo } from '../../components/Logo'
@@ -10,6 +10,7 @@ import './customer.css'
 
 export function CustomerLayout() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [me, setMe] = useState<CustomerSelf | null>(null)
   const [plan, setPlan] = useState<MyPlan | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -91,7 +92,10 @@ export function CustomerLayout() {
             <span className="spinner" />
           </div>
         ) : (
-          <Outlet context={{ me, plan, updateTask } satisfies CustomerContext} />
+          // A new key per page replays the page entrance animation.
+          <div key={location.pathname} className="cx-page">
+            <Outlet context={{ me, plan, updateTask, applyPlan: setPlan } satisfies CustomerContext} />
+          </div>
         )}
       </main>
     </div>

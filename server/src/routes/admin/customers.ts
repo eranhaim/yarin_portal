@@ -6,6 +6,7 @@ import { hashPassword } from '../../auth/password.ts'
 import { parseBody } from '../../http.ts'
 import { Customer, setTaskStatus, toAdminView, type CustomerDoc } from '../../models/Customer.ts'
 import { Plan, planTaskIds, toPlanProgressView, type PlanDoc } from '../../models/Plan.ts'
+import { deleteSubmissions, Submission } from '../../models/Submission.ts'
 import { deleteObject, putObject, storageEnabled } from '../../storage.ts'
 
 export const customersRouter = Router()
@@ -94,6 +95,8 @@ customersRouter.delete('/:id', async (req, res) => {
   const { avatarKey } = customer
   await customer.deleteOne()
   if (avatarKey) await deleteObject(avatarKey).catch((err) => console.warn('Could not delete avatar', err))
+  // The customer's homework goes with them.
+  await deleteSubmissions(await Submission.find({ customerId: customer._id }))
   res.json({ ok: true })
 })
 

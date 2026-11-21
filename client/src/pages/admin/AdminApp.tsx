@@ -3,37 +3,47 @@ import { Navigate, NavLink, Route, Routes } from 'react-router'
 import { Icon } from '../../components/Icon'
 import { Logo } from '../../components/Logo'
 import { ADMIN_UNAUTHORIZED, api, errorMessage } from '../../lib/api'
-import type { AdminStatus } from '../../lib/types'
+import type { AdminIdentity, AdminStatus } from '../../lib/types'
+import { AdminsPage } from './AdminsPage'
 import { CustomerDetailPage } from './CustomerDetailPage'
 import { CustomersPage } from './CustomersPage'
+import { InboxContext, useInboxPolling } from './inbox'
+import { InboxPage } from './InboxPage'
 import { PlanEditorPage } from './PlanEditorPage'
 import { PlansPage } from './PlansPage'
 import './admin.css'
 
+/** undefined = still checking; null = signed out. */
+type Session = AdminIdentity | null | undefined
+
 export function AdminApp() {
-  const [state, setState] = useState<'loading' | 'out' | 'in'>('loading')
+  const [me, setMe] = useState<Session>(undefined)
+
+  const loadMe = () =>
+    api<{ admin: AdminIdentity }>('/admin/me')
+      .then((res) => setMe(res.admin))
+      .catch(() => setMe(null))
 
   useEffect(() => {
-    api('/admin/me')
-      .then(() => setState('in'))
-      .catch(() => setState('out'))
-    const onUnauthorized = () => setState('out')
+    void loadMe()
+    const onUnauthorized = () => setMe(null)
     window.addEventListener(ADMIN_UNAUTHORIZED, onUnauthorized)
     return () => window.removeEventListener(ADMIN_UNAUTHORIZED, onUnauthorized)
   }, [])
 
-  if (state === 'loading') {
+  if (me === undefined) {
     return (
       <div className="adm page-loader">
         <span className="spinner" />
       </div>
     )
   }
-  if (state === 'out') return <AdminLogin onLogin={() => setState('in')} />
-  return <AdminShell onLogout={() => setState('out')} />
+  if (me === null) return <AdminLogin onLogin={() => void loadMe()} />
+  return <AdminShell me={me} onLogout={() => setMe(null)} />
 }
 
 function AdminLogin({ onLogin }: { onLogin: () => void }) {
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [show, setShow] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -44,7 +54,7 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
     setBusy(true)
     setError(null)
     try {
-      await api('/admin/login', { body: { password } })
+      await api('/admin/login', { body: { email, password } })
       onLogin()
     } catch (err) {
       setError(errorMessage(err))
@@ -60,14 +70,27 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
           <Icon name="lock" size={26} />
         </span>
         <Logo subtitle="ניהול" />
-        <p className="adm-login__sub">הזינו את סיסמת המנהל כדי לנהל לקוחות ותוכניות.</p>
+        <p className="adm-login__sub">היכנסו עם האימייל והסיסמה של חשבון המנהל שלכם.</p>
         {error && (
           <div className="alert alert--error" role="alert">
             <Icon name="alert" size={18} /> {error}
           </div>
         )}
         <label className="field">
-          <span className="field__label">סיסמת מנהל</span>
+          <span className="field__label">אימייל</span>
+          <input
+            className="input"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="username"
+            placeholder="you@business.com"
+            autoFocus
+          />
+          <span className="field__hint">כניסה עם הסיסמה הראשית של השרת? השאירו את האימייל ריק.</span>
+        </label>
+        <label className="field">
+          <span className="field__label">סיסמה</span>
           <span className="input-group">
             <input
               className="input"
@@ -75,7 +98,6 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
-              autoFocus
               required
             />
             <button
@@ -96,8 +118,10 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
   )
 }
 
-function AdminShell({ onLogout }: { onLogout: () => void }) {
+function AdminShell({ me, onLogout }: { me: AdminIdentity; onLogout: () => void }) {
   const [status, setStatus] = useState<AdminStatus | null>(null)
+  const inbox = useInboxPolling()
+  const unread = inbox.summary.unread
 
   useEffect(() => {
     api<AdminStatus>('/admin/status')
@@ -127,6 +151,21 @@ function AdminShell({ onLogout }: { onLogout: () => void }) {
             <NavLink to="/admin/plans" className="adm-top__link">
               <Icon name="layers" size={18} /> תוכניות
             </NavLink>
+            <NavLink to="/admin/admins" className="adm-top__link">
+              <Icon name="briefcase" size={18} /> מנהלים
+            </NavLink>
+            <NavLink
+              to="/admin/inbox"
+              className={`adm-top__link adm-top__inbox${unread > 0 ? ' has-unread' : ''}`}
+              aria-label={unread > 0 ? `הגשות, ${unread} חדשות` : 'הגשות'}
+            >
+              <Icon name="bell" size={18} /> הגשות
+              {unread > 0 && (
+                <span key={unread} className="adm-top__badge">
+                  {unread > 99 ? '99+' : unread}
+                </span>
+              )}
+            </NavLink>
           </nav>
           {status && (
             <div className="adm-top__status" title={`מסד נתונים: ${status.db} · אחסון: ${status.storage.status}`}>
@@ -134,6 +173,9 @@ function AdminShell({ onLogout }: { onLogout: () => void }) {
               <span className={`adm-dot${storageOk ? ' is-ok' : ''}`} /> אחסון
             </div>
           )}
+          <span className="adm-top__me" title={me.email ?? undefined}>
+            {me.name}
+          </span>
           <button type="button" className="btn btn--ghost btn--sm" onClick={logout}>
             <Icon name="logout" size={16} /> התנתקות
           </button>
@@ -145,14 +187,18 @@ function AdminShell({ onLogout }: { onLogout: () => void }) {
         </div>
       </header>
       <main className="adm-main">
-        <Routes>
-          <Route index element={<Navigate to="customers" replace />} />
-          <Route path="customers" element={<CustomersPage />} />
-          <Route path="customers/:id" element={<CustomerDetailPage />} />
-          <Route path="plans" element={<PlansPage />} />
-          <Route path="plans/:id" element={<PlanEditorPage />} />
-          <Route path="*" element={<Navigate to="customers" replace />} />
-        </Routes>
+        <InboxContext.Provider value={inbox}>
+          <Routes>
+            <Route index element={<Navigate to="customers" replace />} />
+            <Route path="customers" element={<CustomersPage />} />
+            <Route path="customers/:id" element={<CustomerDetailPage />} />
+            <Route path="plans" element={<PlansPage />} />
+            <Route path="plans/:id" element={<PlanEditorPage />} />
+            <Route path="inbox" element={<InboxPage />} />
+            <Route path="admins" element={<AdminsPage me={me} />} />
+            <Route path="*" element={<Navigate to="customers" replace />} />
+          </Routes>
+        </InboxContext.Provider>
       </main>
     </div>
   )

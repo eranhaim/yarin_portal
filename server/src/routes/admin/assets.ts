@@ -6,6 +6,7 @@ import { parseBody } from '../../http.ts'
 import { Asset, deleteAssets, toAssetView, type AssetDoc } from '../../models/Asset.ts'
 import { Plan, planTaskIds } from '../../models/Plan.ts'
 import { deleteObject, headObject, putObject, signedUploadUrl, storageEnabled } from '../../storage.ts'
+import { MAX_UPLOAD_BYTES, safeFileName, titleFromFileName } from '../../uploads.ts'
 
 // Videos and files for plans and tasks.
 //
@@ -16,8 +17,6 @@ import { deleteObject, headObject, putObject, signedUploadUrl, storageEnabled } 
 //   4. POST /assets/:id/complete          -> the server checks the object exists and marks the asset "ready"
 
 export const assetsRouter = Router()
-
-const MAX_UPLOAD_BYTES = 5 * 1024 ** 3 // 5 GB: the limit of a single S3 PUT
 
 const objectId = z.string().refine(isValidObjectId, 'מזהה לא תקין')
 
@@ -30,19 +29,6 @@ const createAssetSchema = z.object({
   size: z.number().int().positive().max(MAX_UPLOAD_BYTES, 'גודל קובץ מקסימלי: 5GB'),
   durationSeconds: z.number().positive().nullable().optional(),
 })
-
-function safeFileName(name: string): string {
-  const cleaned = name
-    .normalize('NFKD')
-    .replace(/[^\w.-]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-  return cleaned.slice(-100) || 'file'
-}
-
-function titleFromFileName(name: string): string {
-  return name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim() || name
-}
 
 async function findAsset(id: string, res: Response): Promise<AssetDoc | null> {
   const asset = isValidObjectId(id) ? await Asset.findById(id) : null

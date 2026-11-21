@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router'
 import { Die } from '../components/Board'
 import { Icon } from '../components/Icon'
 import { Logo } from '../components/Logo'
+import { Mascot } from '../components/mascot/Mascot'
 import { api, errorMessage } from '../lib/api'
 import './LoginPage.css'
 
@@ -189,6 +190,7 @@ function MiniBoard() {
       <span className="mini__die mini__die--b">
         <Die value={3} />
       </span>
+      <Mascot className="mini__mascot" pose="wave" />
     </div>
   )
 }

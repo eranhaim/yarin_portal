@@ -1,7 +1,7 @@
 import { api } from './api'
 import { fileExtension } from './format'
 import { inspectVideo } from './media'
-import type { Asset } from './types'
+import type { Asset, MyPlan, Submission } from './types'
 
 const TYPES_BY_EXTENSION: Record<string, string> = {
   mp4: 'video/mp4',
@@ -21,10 +21,12 @@ const TYPES_BY_EXTENSION: Record<string, string> = {
   csv: 'text/csv',
 }
 
-function contentTypeOf(file: File, kind: Asset['kind']): string {
+function contentTypeOf(file: File, kind: Asset['kind'] = 'file'): string {
   if (file.type) return file.type
   return TYPES_BY_EXTENSION[fileExtension(file.name)] ?? (kind === 'video' ? 'video/mp4' : 'application/octet-stream')
 }
+
+type SignedUpload = { url: string; method: 'PUT'; headers: Record<string, string> }
 
 /** PUT with upload progress (fetch() cannot report upload progress). */
 function putFile(
@@ -65,10 +67,7 @@ export async function uploadAsset({ planId, taskId, kind, file, onProgress, sign
   const info = kind === 'video' ? await inspectVideo(file) : { duration: null, poster: null }
   const contentType = contentTypeOf(file, kind)
 
-  const { asset, upload } = await api<{
-    asset: Asset
-    upload: { url: string; method: 'PUT'; headers: Record<string, string> }
-  }>(`/admin/plans/${planId}/assets`, {
+  const { asset, upload } = await api<{ asset: Asset; upload: SignedUpload }>(`/admin/plans/${planId}/assets`, {
     body: { kind, taskId, fileName: file.name, contentType, size: file.size, durationSeconds: info.duration },
   })
 
@@ -82,6 +81,29 @@ export async function uploadAsset({ planId, taskId, kind, file, onProgress, sign
   } catch (err) {
     // Remove the unfinished entry, so it does not stay "pending".
     await api(`/admin/assets/${asset.id}`, { method: 'DELETE' }).catch(() => undefined)
+    throw err
+  }
+}
+
+type SubmissionOptions = {
+  taskId: string
+  file: File
+  note?: string
+  onProgress?: (fraction: number) => void
+  signal?: AbortSignal
+}
+
+/** Uploads a customer's homework file for a task. Returns the updated plan (the task may now be "started"). */
+export async function uploadSubmission({ taskId, file, note, onProgress, signal }: SubmissionOptions): Promise<MyPlan | null> {
+  const { submission, upload } = await api<{ submission: Submission; upload: SignedUpload }>(`/me/tasks/${taskId}/submissions`, {
+    body: { fileName: file.name, contentType: contentTypeOf(file), size: file.size, note: note ?? '' },
+  })
+  try {
+    await putFile(upload.url, file, upload.headers, onProgress, signal)
+    const done = await api<{ plan: MyPlan | null }>(`/me/submissions/${submission.id}/complete`, { method: 'POST' })
+    return done.plan
+  } catch (err) {
+    await api(`/me/submissions/${submission.id}`, { method: 'DELETE' }).catch(() => undefined)
     throw err
   }
 }

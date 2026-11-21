@@ -9,12 +9,16 @@ The whole site is in Hebrew (right-to-left) and uses an original printed board-g
 **Customer area** (`/`)
 
 - Login page with email and password (accounts are created by the admin).
-- **Board** (`/map`): a square loop of squares, like a property board game. Every level (chapter) is a color group that starts with a level square, followed by one square per task. Done tasks get a stamp, locked levels are grey, and the customer's token stands on the next open task. When the customer comes back after completing tasks, the dice roll and the token hops forward.
+- **Board** (`/map`): a rectangular loop of squares, like a property board game (landscape on wide screens, portrait on phones). The customer's piece is a 3D mascot (three.js + React Three Fiber, loaded lazily, with a 2D token as fallback). Every level (chapter) is a color group that starts with a level square, followed by one square per task. Done tasks get a stamp, locked levels are grey, and the customer's token stands on the next open task. When the customer comes back after completing tasks, the dice roll and the token hops forward.
 - **Level** (`/level/:id`): the tasks of the chapter, with due times and status (not started, in progress, completed).
-- **Task** (`/level/:id/task/:taskId`): instructions, a custom video player (with a playlist when there are several videos), and downloadable files.
+- **Task** (`/level/:id/task/:taskId`): instructions, a custom video player (with a playlist when there are several videos), downloadable files, and **homework upload**: the customer hands in files (up to 5 GB each, straight to the bucket) with an optional note.
 - **Library** (`/library`): the plan's guidance videos as a playlist with a side list, and the plan's files.
 
-**Admin panel** (`/admin`, password from `ADMIN_PASSWORD`)
+**Admin panel** (`/admin`)
+
+- **Sign-in**: admin accounts (email + password). `ADMIN_PASSWORD` from `.env` still works as the main password (leave the email empty).
+- **Admins** (`/admin/admins`): add, edit and remove admin accounts.
+- **Homework inbox** (`/admin/inbox`): every file customers handed in, newest first, with download links. A bell in the top bar shows the unread count (checked every 30 seconds), the tab title shows it too, and admins can turn on browser notifications.
 
 - **Customers**: cards with avatar, contact details, plan and current level. Create and edit customers (name, email, phone, business name, notes, avatar, password, plan), change task status for a customer, see the customer's token on the board.
 - **Plans**: create plans with levels (chapters) and tasks (title, instructions, due time). Upload videos and files per task, and a guidance playlist and files for the whole plan. A board shows the tokens of all customers on the plan.

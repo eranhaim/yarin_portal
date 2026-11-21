@@ -1,9 +1,10 @@
-import { createHash, timingSafeEqual } from 'node:crypto'
-import type { NextFunction, Request, Response } from 'express'
+import type { Request, Response } from 'express'
 import { jwtVerify, SignJWT } from 'jose'
 import { env, isProduction } from '../env.ts'
 
 // Sessions are signed JWTs in httpOnly cookies. JavaScript in the page cannot read them.
+// A session can carry a fingerprint (for example, of a password hash); the caller checks it,
+// so a password change ends the old sessions. Admin checks live in auth/admin.ts.
 
 type Role = 'customer' | 'admin'
 
@@ -14,25 +15,14 @@ const SESSION = {
 
 const key = new TextEncoder().encode(env.SESSION_SECRET)
 
-const sha256 = (value: string) => createHash('sha256').update(value).digest()
-
-// Admin sessions carry a fingerprint of ADMIN_PASSWORD.
-// When the password in .env changes, all old admin sessions stop working.
-const adminFingerprint = sha256(`admin-session:${env.ADMIN_PASSWORD}`).toString('base64url').slice(0, 16)
-
-export function isAdminPassword(candidate: string): boolean {
-  // Compare fixed-length digests so the check takes the same time for any input.
-  return timingSafeEqual(sha256(candidate), sha256(env.ADMIN_PASSWORD))
-}
-
 function cookieOptions(role: Role) {
   const { path, sameSite } = SESSION[role]
   return { httpOnly: true, secure: isProduction, sameSite, path } as const
 }
 
-export async function startSession(res: Response, role: Role, subject: string): Promise<void> {
+export async function startSession(res: Response, role: Role, subject: string, fingerprint?: string): Promise<void> {
   const { cookie, maxAgeSeconds } = SESSION[role]
-  const token = await new SignJWT(role === 'admin' ? { role, fp: adminFingerprint } : { role })
+  const token = await new SignJWT(fingerprint ? { role, fp: fingerprint } : { role })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(subject)
     .setIssuedAt()
@@ -45,24 +35,20 @@ export function endSession(res: Response, role: Role): void {
   res.clearCookie(SESSION[role].cookie, cookieOptions(role))
 }
 
-/** Returns the session subject (customer id, or "admin"), or null when there is no valid session. */
-export async function readSession(req: Request, role: Role): Promise<string | null> {
+/** The session's subject and fingerprint, or null when there is no valid session for this role. */
+export async function readSessionToken(req: Request, role: Role): Promise<{ subject: string; fingerprint: string | null } | null> {
   const token: unknown = req.cookies?.[SESSION[role].cookie]
   if (typeof token !== 'string') return null
   try {
     const { payload } = await jwtVerify(token, key, { algorithms: ['HS256'] })
     if (payload.role !== role || !payload.sub) return null
-    if (role === 'admin' && payload.fp !== adminFingerprint) return null
-    return payload.sub
+    return { subject: payload.sub, fingerprint: typeof payload.fp === 'string' ? payload.fp : null }
   } catch {
     return null
   }
 }
 
-export async function requireAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {
-  if (!(await readSession(req, 'admin'))) {
-    res.status(401).json({ error: 'נדרשת התחברות מנהל' })
-    return
-  }
-  next()
+/** Returns the session subject (for a customer: the customer id), or null. */
+export async function readSession(req: Request, role: Role): Promise<string | null> {
+  return (await readSessionToken(req, role))?.subject ?? null
 }

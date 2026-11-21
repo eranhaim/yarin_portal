@@ -47,7 +47,7 @@ function PlanBoard() {
         id: c.id,
         title: c.title,
         state: c.state,
-        tasks: c.tasks.map((t) => ({ id: t.id, title: t.title, started: t.started, completed: t.completed })),
+        tasks: c.tasks.map((t) => ({ id: t.id, title: t.title, started: t.started, completed: t.completed, submitted: t.submissions.length > 0 })),
       })),
     [p],
   )
@@ -73,6 +73,7 @@ function PlanBoard() {
         <Board
           chapters={chapters}
           title={p.title}
+          mascot
           player={{ id: me.id, name: me.name, avatarUrl: me.avatarUrl, position: p.level.position }}
           animateFrom={lastSeen}
           onArrive={save}

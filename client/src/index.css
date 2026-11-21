@@ -891,3 +891,76 @@ textarea {
 .logo--light .logo__text small {
   text-shadow: none;
 }
+
+/* ---------- Motion shared by the whole app ---------- */
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+@keyframes wiggle {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  20% {
+    transform: rotate(-14deg);
+  }
+  40% {
+    transform: rotate(12deg);
+  }
+  60% {
+    transform: rotate(-8deg);
+  }
+  80% {
+    transform: rotate(5deg);
+  }
+}
+
+/* A light sweeps across game buttons on hover. */
+.btn--game,
+.btn--primary {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn--game::after,
+.btn--primary::after {
+  content: '';
+  position: absolute;
+  inset: -2px auto -2px -60%;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: skewX(-20deg);
+  pointer-events: none;
+}
+
+.btn--game:hover:not(:disabled)::after,
+.btn--primary:hover:not(:disabled)::after {
+  animation: shine 0.7s ease;
+}
+
+@keyframes shine {
+  to {
+    left: 130%;
+  }
+}
+
+.btn:hover:not(:disabled):not(:active):not(.btn--ghost) {
+  transform: translateY(-1px);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.modal[open] .modal__body > * {
+  animation: rise-in 0.35s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
