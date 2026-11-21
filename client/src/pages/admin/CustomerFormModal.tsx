@@ -85,7 +85,7 @@ export function CustomerFormModal({ open, onClose, customer, plans, onSaved }: P
     const planChanged = fields.planId !== (customer?.plan?.id ?? '')
     if (isEdit && planChanged && customer?.plan) {
       const ok = window.confirm(
-        `Change the plan of ${customer.name}? Their progress on “${customer.plan.title}” will be reset.`,
+        `להחליף את התוכנית של ${customer.name}? ההתקדמות ב„${customer.plan.title}” תתאפס.`,
       )
       if (!ok) return
     }
@@ -137,16 +137,16 @@ export function CustomerFormModal({ open, onClose, customer, plans, onSaved }: P
     <Modal
       open={open}
       onClose={onClose}
-      title={isEdit ? `Edit ${customer!.name}` : 'New customer'}
+      title={isEdit ? `עריכת ${customer!.name}` : 'לקוח חדש'}
       size="lg"
       footer={
         <>
           <button type="button" className="btn btn--ghost" onClick={onClose} disabled={busy}>
-            Cancel
+            ביטול
           </button>
           <button type="submit" form="customer-form" className="btn btn--primary" disabled={busy}>
             {busy && <span className="spinner" />}
-            {isEdit ? 'Save changes' : 'Create customer'}
+            {isEdit ? 'שמירת שינויים' : 'יצירת לקוח'}
           </button>
         </>
       }
@@ -163,7 +163,7 @@ export function CustomerFormModal({ open, onClose, customer, plans, onSaved }: P
             type="button"
             className="adm-avatar-picker__button"
             onClick={() => fileInput.current?.click()}
-            aria-label="Choose avatar image"
+            aria-label="בחירת תמונת פרופיל"
           >
             <Avatar name={fields.name || '?'} url={avatarUrl} size={96} />
             <span className="adm-avatar-picker__overlay">
@@ -171,11 +171,11 @@ export function CustomerFormModal({ open, onClose, customer, plans, onSaved }: P
             </span>
           </button>
           <div className="adm-avatar-picker__text">
-            <strong>Avatar</strong>
-            <span>A square crop of the image is used. JPEG, PNG or WebP.</span>
+            <strong>תמונת פרופיל</strong>
+            <span>נשתמש בחיתוך ריבועי של התמונה. JPEG, PNG או WebP.</span>
             <div className="adm-avatar-picker__actions">
               <button type="button" className="btn btn--soft btn--sm" onClick={() => fileInput.current?.click()}>
-                <Icon name="upload" size={15} /> {avatarUrl ? 'Change' : 'Upload'}
+                <Icon name="upload" size={15} /> {avatarUrl ? 'החלפה' : 'העלאה'}
               </button>
               {avatarUrl && (
                 <button
@@ -186,7 +186,7 @@ export function CustomerFormModal({ open, onClose, customer, plans, onSaved }: P
                     setRemoveAvatar(true)
                   }}
                 >
-                  Remove
+                  הסרה
                 </button>
               )}
             </div>
@@ -205,7 +205,7 @@ export function CustomerFormModal({ open, onClose, customer, plans, onSaved }: P
 
         <div className="adm-form__grid">
           <label className="field">
-            <span className="field__label">Full name *</span>
+            <span className="field__label">שם מלא *</span>
             <input
               className="input"
               value={fields.name}
@@ -217,12 +217,12 @@ export function CustomerFormModal({ open, onClose, customer, plans, onSaved }: P
             {errors.name && <span className="field__error">{errors.name}</span>}
           </label>
           <label className="field">
-            <span className="field__label">Business name</span>
+            <span className="field__label">שם העסק</span>
             <input className="input" value={fields.company} onChange={(e) => set('company', e.target.value)} />
             {errors.company && <span className="field__error">{errors.company}</span>}
           </label>
           <label className="field">
-            <span className="field__label">Email *</span>
+            <span className="field__label">אימייל *</span>
             <input
               className="input"
               type="email"
@@ -235,21 +235,21 @@ export function CustomerFormModal({ open, onClose, customer, plans, onSaved }: P
             {errors.email && <span className="field__error">{errors.email}</span>}
           </label>
           <label className="field">
-            <span className="field__label">Phone</span>
+            <span className="field__label">טלפון</span>
             <input
               className="input"
               type="tel"
               value={fields.phone}
               onChange={(e) => set('phone', e.target.value)}
               aria-invalid={Boolean(errors.phone)}
-              placeholder="+972 50 000 0000"
+              placeholder="050-000-0000"
             />
             {errors.phone && <span className="field__error">{errors.phone}</span>}
           </label>
 
           <label className="field">
             <span className="field__label">
-              {isEdit ? 'New password' : 'Password *'} {isEdit && <small>(leave empty to keep the current one)</small>}
+              {isEdit ? 'סיסמה חדשה' : 'סיסמה *'} {isEdit && <small>(השאירו ריק כדי לשמור על הנוכחית)</small>}
             </span>
             <span className="input-group adm-password">
               <input
@@ -259,14 +259,14 @@ export function CustomerFormModal({ open, onClose, customer, plans, onSaved }: P
                 onChange={(e) => set('password', e.target.value)}
                 aria-invalid={Boolean(errors.password)}
                 autoComplete="new-password"
-                placeholder="At least 8 characters"
+                placeholder="לפחות 8 תווים"
                 required={!isEdit}
               />
               <button
                 type="button"
                 className="icon-btn input-group__addon"
                 onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-label={showPassword ? 'הסתרת הסיסמה' : 'הצגת הסיסמה'}
               >
                 <Icon name={showPassword ? 'eyeOff' : 'eye'} size={18} />
               </button>
@@ -279,28 +279,28 @@ export function CustomerFormModal({ open, onClose, customer, plans, onSaved }: P
                 setShowPassword(true)
               }}
             >
-              <Icon name="refresh" size={14} /> Generate a password
+              <Icon name="refresh" size={14} /> יצירת סיסמה אקראית
             </button>
             {errors.password && <span className="field__error">{errors.password}</span>}
           </label>
 
           <label className="field">
-            <span className="field__label">Plan</span>
+            <span className="field__label">תוכנית</span>
             <select className="select" value={fields.planId} onChange={(e) => set('planId', e.target.value)}>
-              <option value="">No plan</option>
+              <option value="">ללא תוכנית</option>
               {plans.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.title} ({p.chapterCount} levels)
+                  {p.title} ({p.chapterCount} שלבים)
                 </option>
               ))}
             </select>
-            <span className="field__hint">The customer sees this plan as a map of levels.</span>
+            <span className="field__hint">הלקוח רואה את התוכנית כלוח משחק עם שלבים.</span>
           </label>
         </div>
 
         <label className="field">
           <span className="field__label">
-            Notes <small>(only you see these)</small>
+            הערות <small>(רק אתם רואים אותן)</small>
           </span>
           <textarea className="textarea" value={fields.notes} onChange={(e) => set('notes', e.target.value)} rows={3} />
         </label>
@@ -308,7 +308,7 @@ export function CustomerFormModal({ open, onClose, customer, plans, onSaved }: P
         {isEdit && (
           <label className="toggle">
             <input type="checkbox" checked={fields.active} onChange={(e) => set('active', e.target.checked)} />
-            Active (the customer can sign in)
+            פעיל (הלקוח יכול להתחבר)
           </label>
         )}
       </form>

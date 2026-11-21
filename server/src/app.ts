@@ -24,7 +24,7 @@ app.use('/api/admin', adminRouter)
 app.use('/api/me', meRouter)
 
 app.use('/api', (_req, res) => {
-  res.status(404).json({ error: 'Not found' })
+  res.status(404).json({ error: 'לא נמצא' })
 })
 
 // Express 5 sends errors from async handlers here.
@@ -32,16 +32,16 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   const e = err as { code?: number; status?: number; type?: string; message?: string }
 
   if (e.code === 11000) {
-    res.status(409).json({ error: 'A customer with this email already exists', fields: { email: 'Email already in use' } })
+    res.status(409).json({ error: 'כבר קיים לקוח עם האימייל הזה', fields: { email: 'האימייל כבר בשימוש' } })
     return
   }
   // Errors from the body parsers (bad JSON, body too large, and so on).
   if (e.status && e.status >= 400 && e.status < 500) {
-    const message = e.type === 'entity.too.large' ? 'The upload is too large' : 'Invalid request'
+    const message = e.type === 'entity.too.large' ? 'הקובץ גדול מדי' : 'בקשה לא תקינה'
     res.status(e.status).json({ error: message })
     return
   }
 
   console.error(err)
-  res.status(500).json({ error: 'Something went wrong. Please try again.' })
+  res.status(500).json({ error: 'משהו השתבש. נסו שוב.' })
 })

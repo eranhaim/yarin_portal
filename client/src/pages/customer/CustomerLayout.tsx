@@ -46,28 +46,33 @@ export function CustomerLayout() {
     <div className="cx">
       <header className="cx-top">
         <div className="cx-top__inner">
-          <NavLink to="/map" className="cx-top__logo" aria-label="Go to the map">
-            <Logo light />
+          <NavLink to="/map" className="cx-top__logo" aria-label="למפה">
+            <Logo />
           </NavLink>
-          <nav className="cx-top__nav" aria-label="Main">
+          <nav className="cx-top__nav" aria-label="ניווט ראשי">
             <NavLink to="/map" className="cx-top__link">
               <Icon name="map" size={18} />
-              <span>Map</span>
+              <span>המפה</span>
             </NavLink>
             <NavLink to="/library" className="cx-top__link">
               <Icon name="video" size={18} />
-              <span>Library</span>
+              <span>הספרייה</span>
             </NavLink>
           </nav>
           {me && (
             <div className="cx-top__user">
               <Avatar name={me.name} url={me.avatarUrl} size={36} />
               <span className="cx-top__name">{me.name}</span>
-              <button type="button" className="icon-btn" onClick={logout} aria-label="Log out" title="Log out">
+              <button type="button" className="icon-btn" onClick={logout} aria-label="התנתקות" title="התנתקות">
                 <Icon name="logout" size={18} />
               </button>
             </div>
           )}
+        </div>
+        <div className="cx-stripes" aria-hidden="true">
+          {Array.from({ length: 8 }, (_, i) => (
+            <i key={i} style={{ background: `var(--g${i + 1})` }} />
+          ))}
         </div>
       </header>
 
@@ -75,10 +80,10 @@ export function CustomerLayout() {
         {error ? (
           <div className="cx-empty">
             <Icon name="alert" size={36} />
-            <h2>Something went wrong</h2>
+            <h2>משהו השתבש</h2>
             <p>{error}</p>
             <button type="button" className="btn btn--light" onClick={() => window.location.reload()}>
-              Try again
+              נסו שוב
             </button>
           </div>
         ) : !me ? (

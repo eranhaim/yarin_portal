@@ -1,21 +1,25 @@
 # Yarin Portal
 
-A course portal for a business advisor. Customers sign in and follow their plan on a game-style map: each chapter of the plan is a level, and each level has tasks with videos and files. The advisor manages customers, plans and media in an admin panel.
+A course portal for a business advisor. Customers sign in and follow their plan on a board-game map: each chapter of the plan is a color group on the board, and each task is a square with videos and files. The advisor manages customers, plans and media in an admin panel.
+
+The whole site is in Hebrew (right-to-left) and uses an original printed board-game look: cream paper, ink outlines, color bands, dice and tokens.
 
 ## Features
 
 **Customer area** (`/`)
 
 - Login page with email and password (accounts are created by the admin).
-- **Map** (`/map`): a game-style trail where every chapter is a level. Completed levels get a star, the current level glows, later levels stay locked until the level before them is complete. The customer's avatar walks to the next level when a level is complete.
+- **Board** (`/map`): a square loop of squares, like a property board game. Every level (chapter) is a color group that starts with a level square, followed by one square per task. Done tasks get a stamp, locked levels are grey, and the customer's token stands on the next open task. When the customer comes back after completing tasks, the dice roll and the token hops forward.
 - **Level** (`/level/:id`): the tasks of the chapter, with due times and status (not started, in progress, completed).
 - **Task** (`/level/:id/task/:taskId`): instructions, a custom video player (with a playlist when there are several videos), and downloadable files.
 - **Library** (`/library`): the plan's guidance videos as a playlist with a side list, and the plan's files.
 
 **Admin panel** (`/admin`, password from `ADMIN_PASSWORD`)
 
-- **Customers**: cards with avatar, contact details, plan and current level. Create and edit customers (name, email, phone, business name, notes, avatar, password, plan), change task status for a customer, see the customer's position on the map.
-- **Plans**: create plans with levels (chapters) and tasks (title, instructions, due time). Upload videos and files per task, and a guidance playlist and files for the whole plan. A map shows where every customer on the plan is.
+- **Customers**: cards with avatar, contact details, plan and current level. Create and edit customers (name, email, phone, business name, notes, avatar, password, plan), change task status for a customer, see the customer's token on the board.
+- **Plans**: create plans with levels (chapters) and tasks (title, instructions, due time). Upload videos and files per task, and a guidance playlist and files for the whole plan. A board shows the tokens of all customers on the plan.
+
+A task title like `שיעור 07 · תוכן כחלק קבוע מהעסק` shows `07` in the square's number badge and the rest as the square label.
 
 ## Tech stack
 
@@ -31,7 +35,7 @@ A course portal for a business advisor. Customers sign in and follow their plan 
 
 ```
 client/                 React app
-  src/components/       GameMap, VideoPlayer, VideoPlaylist, FileList, ...
+  src/components/       Board (the board-game map), VideoPlayer, VideoPlaylist, FileList, ...
   src/pages/customer/   Map, level, task and library pages
   src/pages/admin/      Admin panel pages
   Caddyfile             Production web server config

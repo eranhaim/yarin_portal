@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
+import { groupColor } from '../../lib/groups'
 import { Icon } from '../../components/Icon'
 import { StatusPill } from '../../components/TaskStatusControl'
 import { errorMessage } from '../../lib/api'
@@ -22,9 +23,9 @@ export function LevelPage() {
   if (!chapter) {
     return (
       <div className="cx-empty">
-        <h2>Level not found</h2>
+        <h2>השלב לא נמצא</h2>
         <Link to="/map" className="btn btn--light">
-          Back to the map
+          חזרה ללוח
         </Link>
       </div>
     )
@@ -36,10 +37,10 @@ export function LevelPage() {
         <span className="cx-empty__icon">
           <Icon name="lock" size={32} />
         </span>
-        <h2>Level {index + 1} is locked</h2>
-        <p>Complete the tasks of the level before it to open this level.</p>
+        <h2>שלב {index + 1} עדיין נעול</h2>
+        <p>סיימו את המשימות בשלב שלפניו כדי לפתוח אותו.</p>
         <Link to="/map" className="btn btn--light">
-          Back to the map
+          חזרה ללוח
         </Link>
       </div>
     )
@@ -61,25 +62,26 @@ export function LevelPage() {
   }
 
   return (
-    <div className="cx-level">
+    <div className="cx-level" style={{ '--group': groupColor(index) } as CSSProperties}>
       <Link to="/map" className="cx-back">
-        <Icon name="arrowLeft" size={18} /> Map
+        <Icon name="arrowLeft" size={18} /> חזרה ללוח
       </Link>
 
-      <header className={`cx-level__hero cx-level__hero--${chapter.state}`}>
-        <span className="cx-level__badge">{index + 1}</span>
-        <div className="cx-level__heading">
-          <p className="cx-eyebrow">
-            Level {index + 1} of {plan.chapters.length}
-          </p>
+      <header className="cx-deed cx-level__hero">
+        <div className="cx-deed__band">
+          <span className="cx-deed__eyebrow">
+            שלב {index + 1} מתוך {plan.chapters.length}
+          </span>
           <h1>{chapter.title}</h1>
+        </div>
+        <div className="cx-deed__body">
           {chapter.description && <p className="cx-level__description">{chapter.description}</p>}
           <div className="cx-level__progress">
             <div className="progress">
               <div className="progress__bar" style={{ width: `${percent}%` }} />
             </div>
             <span>
-              {chapter.completedCount}/{chapter.tasks.length} tasks
+              {chapter.completedCount}/{chapter.tasks.length} משימות
             </span>
           </div>
         </div>
@@ -90,11 +92,11 @@ export function LevelPage() {
           <Confetti />
           <Icon name="trophy" size={28} />
           <div>
-            <strong>Level complete!</strong>
-            <span>{next ? `Level ${index + 2} is open now.` : 'You finished the whole plan.'}</span>
+            <strong>השלב הושלם!</strong>
+            <span>{next ? `שלב ${index + 2} נפתח עכשיו.` : 'סיימתם את כל התוכנית.'}</span>
           </div>
           <button type="button" className="btn btn--game" onClick={() => navigate('/map')}>
-            {next ? 'Continue on the map' : 'See the map'}
+            <Icon name="dice" size={18} /> {next ? 'ממשיכים בלוח' : 'ללוח'}
           </button>
         </div>
       )}
@@ -106,7 +108,7 @@ export function LevelPage() {
       )}
 
       {chapter.tasks.length === 0 ? (
-        <p className="empty-note">This level has no tasks.</p>
+        <p className="empty-note">בשלב הזה אין משימות.</p>
       ) : (
         <ol className="cx-tasks">
           {chapter.tasks.map((task, i) => {
@@ -138,12 +140,12 @@ export function LevelPage() {
                 {!task.completed && (
                   <button
                     type="button"
-                    className="btn btn--sm btn--light cx-task__action"
+                    className="btn btn--sm cx-task__action"
                     disabled={busyTask === task.id}
                     onClick={() => void quickAction(task)}
                   >
                     {busyTask === task.id ? <span className="spinner" /> : <Icon name={task.started ? 'check' : 'play'} size={14} />}
-                    {task.started ? 'Mark complete' : 'Start'}
+                    {task.started ? 'סימון כבוצע' : 'התחלה'}
                   </button>
                 )}
               </li>
@@ -156,7 +158,7 @@ export function LevelPage() {
 }
 
 function Confetti() {
-  const colors = ['#ffd56b', '#ff6b4a', '#8c78ff', '#4ade80', '#60a5fa']
+  const colors = ['var(--g1)', 'var(--g2)', 'var(--g3)', 'var(--g4)', 'var(--g5)', 'var(--g6)']
   return (
     <span className="cx-confetti" aria-hidden="true">
       {Array.from({ length: 24 }, (_, i) => (

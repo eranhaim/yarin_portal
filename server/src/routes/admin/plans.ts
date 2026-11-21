@@ -11,26 +11,26 @@ export const plansRouter = Router()
 // The editor sends the whole plan on every save.
 // Existing chapters and tasks keep their id, so customer progress stays linked to them.
 
-const optionalId = z.string().refine(isValidObjectId, 'Invalid id').optional()
+const optionalId = z.string().refine(isValidObjectId, 'מזהה לא תקין').optional()
 
 const taskInput = z.object({
   id: optionalId,
-  title: z.string().trim().min(1, 'Every task needs a title').max(200, 'Task title is too long'),
-  description: z.string().trim().max(2000, 'Task description is too long').default(''),
-  dueAt: z.iso.datetime({ offset: true, message: 'Invalid due time' }).nullable().default(null),
+  title: z.string().trim().min(1, 'לכל משימה צריכה להיות כותרת').max(200, 'כותרת המשימה ארוכה מדי'),
+  description: z.string().trim().max(2000, 'תיאור המשימה ארוך מדי').default(''),
+  dueAt: z.iso.datetime({ offset: true, message: 'מועד היעד לא תקין' }).nullable().default(null),
 })
 
 const chapterInput = z.object({
   id: optionalId,
-  title: z.string().trim().min(1, 'Every chapter needs a title').max(200, 'Chapter title is too long'),
-  description: z.string().trim().max(2000, 'Chapter description is too long').default(''),
-  tasks: z.array(taskInput).max(500, 'Too many tasks in one chapter').default([]),
+  title: z.string().trim().min(1, 'לכל שלב צריכה להיות כותרת').max(200, 'כותרת השלב ארוכה מדי'),
+  description: z.string().trim().max(2000, 'תיאור השלב ארוך מדי').default(''),
+  tasks: z.array(taskInput).max(500, 'יותר מדי משימות בשלב אחד').default([]),
 })
 
 const planInput = z.object({
-  title: z.string().trim().min(1, 'Plan title is required').max(200, 'Plan title is too long'),
-  description: z.string().trim().max(4000, 'Description is too long').default(''),
-  chapters: z.array(chapterInput).max(200, 'Too many chapters').default([]),
+  title: z.string().trim().min(1, 'חובה למלא שם לתוכנית').max(200, 'שם התוכנית ארוך מדי'),
+  description: z.string().trim().max(4000, 'התיאור ארוך מדי').default(''),
+  chapters: z.array(chapterInput).max(200, 'יותר מדי שלבים').default([]),
 })
 
 function toDocument(input: z.infer<typeof planInput>) {
@@ -53,7 +53,7 @@ function toDocument(input: z.infer<typeof planInput>) {
 
 async function findPlan(id: string, res: Response): Promise<PlanDoc | null> {
   const plan = isValidObjectId(id) ? await Plan.findById(id) : null
-  if (!plan) res.status(404).json({ error: 'Plan not found' })
+  if (!plan) res.status(404).json({ error: 'התוכנית לא נמצאה' })
   return plan
 }
 
@@ -115,7 +115,10 @@ plansRouter.delete('/:id', async (req, res) => {
   const customerCount = await Customer.countDocuments({ planId: plan._id })
   if (customerCount > 0) {
     res.status(409).json({
-      error: `This plan is assigned to ${customerCount} customer${customerCount === 1 ? '' : 's'}. Assign them a different plan first.`,
+      error:
+        customerCount === 1
+          ? 'התוכנית משויכת ללקוח אחד. שייכו לו תוכנית אחרת קודם.'
+          : `התוכנית משויכת ל-${customerCount} לקוחות. שייכו להם תוכנית אחרת קודם.`,
     })
     return
   }

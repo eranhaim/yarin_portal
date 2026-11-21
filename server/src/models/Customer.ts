@@ -77,7 +77,7 @@ function planSummary(c: CustomerDoc, plan: PlanDoc) {
     title: plan.title,
     assignedAt: c.planAssignedAt,
     ...progressSummary(plan, c.taskProgress),
-    level: { index: level.index, total: level.total, finished: level.finished, title: level.title },
+    level: { index: level.index, position: level.position, total: level.total, finished: level.finished, title: level.title },
   }
 }
 

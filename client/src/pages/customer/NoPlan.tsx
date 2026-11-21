@@ -1,13 +1,14 @@
-import { Icon } from '../../components/Icon'
+import { Die } from '../../components/Board'
 
 export function NoPlan({ name }: { name: string }) {
   return (
     <div className="cx-empty">
-      <span className="cx-empty__icon">
-        <Icon name="map" size={34} />
+      <span className="cx-empty__dice" aria-hidden="true">
+        <Die value={5} />
+        <Die value={2} />
       </span>
-      <h2>Hi {name.split(' ')[0]}, your journey is almost ready</h2>
-      <p>Yarin is preparing your plan. Your map appears here as soon as it is ready.</p>
+      <h2>היי {name.split(' ')[0]}, המסע שלך כמעט מוכן</h2>
+      <p>ירין מכין עבורך את התוכנית. לוח המשחק יופיע כאן ברגע שהיא תהיה מוכנה.</p>
     </div>
   )
 }

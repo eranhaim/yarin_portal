@@ -19,11 +19,11 @@ export function PlansPage() {
     <div className="adm-page">
       <header className="adm-page__head">
         <div>
-          <h1>Plans</h1>
-          <p>A plan has levels (chapters), and each level has tasks. Assign a plan to customers from their page.</p>
+          <h1>תוכניות</h1>
+          <p>לכל תוכנית יש שלבים, ולכל שלב יש משימות. משייכים תוכנית ללקוח מהעמוד שלו.</p>
         </div>
         <Link to="/admin/plans/new" className="btn btn--primary">
-          <Icon name="plus" size={18} /> New plan
+          <Icon name="plus" size={18} /> תוכנית חדשה
         </Link>
       </header>
 
@@ -42,10 +42,10 @@ export function PlansPage() {
           <span className="adm-empty__icon">
             <Icon name="layers" size={30} />
           </span>
-          <h2>No plans yet</h2>
-          <p>Create a plan with levels and tasks. Then add videos and files for each task.</p>
+          <h2>עדיין אין תוכניות</h2>
+          <p>צרו תוכנית עם שלבים ומשימות. אחר כך הוסיפו סרטונים וקבצים לכל משימה.</p>
           <Link to="/admin/plans/new" className="btn btn--primary">
-            <Icon name="plus" size={18} /> New plan
+            <Icon name="plus" size={18} /> תוכנית חדשה
           </Link>
         </div>
       ) : (
@@ -60,16 +60,16 @@ export function PlansPage() {
                 {plan.description && <span className="adm-plan__desc">{plan.description}</span>}
                 <span className="adm-plan__chips">
                   <span className="chip">
-                    <Icon name="flag" size={13} /> {plan.chapterCount} level{plan.chapterCount === 1 ? '' : 's'}
+                    <Icon name="flag" size={13} /> {plan.chapterCount === 1 ? 'שלב אחד' : `${plan.chapterCount} שלבים`}
                   </span>
                   <span className="chip">
-                    <Icon name="list" size={13} /> {plan.taskCount} task{plan.taskCount === 1 ? '' : 's'}
+                    <Icon name="list" size={13} /> {plan.taskCount === 1 ? 'משימה אחת' : `${plan.taskCount} משימות`}
                   </span>
                   <span className="chip chip--brand">
                     <Icon name="users" size={13} /> {plan.customerCount}
                   </span>
                 </span>
-                <span className="adm-plan__date">Updated {formatDate(plan.updatedAt)}</span>
+                <span className="adm-plan__date">עודכן ב-{formatDate(plan.updatedAt)}</span>
               </Link>
             </li>
           ))}

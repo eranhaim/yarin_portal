@@ -14,7 +14,7 @@ async function requireCustomer(req: Request, res: Response, next: NextFunction):
   const customer = id ? await Customer.findById(id) : null
   if (!customer || !customer.active) {
     endSession(res, 'customer')
-    res.status(401).json({ error: 'Not logged in' })
+    res.status(401).json({ error: 'לא מחוברים' })
     return
   }
   res.locals.customer = customer
@@ -79,11 +79,11 @@ meRouter.patch('/tasks/:taskId', async (req, res) => {
   const view = plan ? toPlanProgressView(plan, customer.planAssignedAt, customer.taskProgress) : null
   const chapter = view?.chapters.find((c) => c.tasks.some((t) => t.id === req.params.taskId))
   if (!plan || !chapter) {
-    res.status(404).json({ error: 'Task not found' })
+    res.status(404).json({ error: 'המשימה לא נמצאה' })
     return
   }
   if (chapter.state === 'locked') {
-    res.status(403).json({ error: 'Finish the earlier levels first' })
+    res.status(403).json({ error: 'סיימו קודם את השלבים הקודמים' })
     return
   }
   setTaskStatus(customer, req.params.taskId, body.status)

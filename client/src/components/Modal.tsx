@@ -34,7 +34,7 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }: P
         <div className="modal__inner">
           <header className="modal__header">
             <h2>{title}</h2>
-            <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">
+            <button type="button" className="icon-btn" onClick={onClose} aria-label="סגירה">
               <Icon name="x" />
             </button>
           </header>

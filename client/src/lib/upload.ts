@@ -42,10 +42,10 @@ function putFile(
       if (e.lengthComputable) onProgress?.(e.loaded / e.total)
     }
     xhr.onload = () =>
-      xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Upload failed (${xhr.status})`))
+      xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`ההעלאה נכשלה (${xhr.status})`))
     xhr.onerror = () =>
-      reject(new Error('Upload failed. Check the connection, and that the bucket allows uploads from this site (CORS).'))
-    xhr.onabort = () => reject(new DOMException('Upload cancelled', 'AbortError'))
+      reject(new Error('ההעלאה נכשלה. בדקו את החיבור, ושהאחסון מאפשר העלאות מהאתר הזה (CORS).'))
+    xhr.onabort = () => reject(new DOMException('ההעלאה בוטלה', 'AbortError'))
     signal?.addEventListener('abort', () => xhr.abort())
     xhr.send(file)
   })

@@ -9,8 +9,8 @@ import { Customer, toCustomerView } from '../models/Customer.ts'
 export const authRouter = Router()
 
 const loginSchema = z.object({
-  email: z.string().trim().toLowerCase().pipe(z.email('Enter a valid email address')),
-  password: z.string().min(1, 'Enter your password').max(200),
+  email: z.string().trim().toLowerCase().pipe(z.email('הזינו כתובת אימייל תקינה')),
+  password: z.string().min(1, 'הזינו סיסמה').max(200),
 })
 
 authRouter.post('/login', loginRateLimit(), async (req, res) => {
@@ -21,11 +21,11 @@ authRouter.post('/login', loginRateLimit(), async (req, res) => {
   const passwordOk = await verifyPassword(body.password, customer?.passwordHash ?? DUMMY_HASH)
 
   if (!customer || !passwordOk) {
-    res.status(401).json({ error: 'Incorrect email or password' })
+    res.status(401).json({ error: 'האימייל או הסיסמה שגויים' })
     return
   }
   if (!customer.active) {
-    res.status(403).json({ error: 'This account is not active. Please contact Yarin.' })
+    res.status(403).json({ error: 'החשבון לא פעיל. פנו לירין.' })
     return
   }
 
@@ -45,7 +45,7 @@ authRouter.get('/me', async (req, res) => {
   const customer = id ? await Customer.findById(id) : null
   if (!customer || !customer.active) {
     endSession(res, 'customer')
-    res.status(401).json({ error: 'Not logged in' })
+    res.status(401).json({ error: 'לא מחוברים' })
     return
   }
   res.json({ customer: await toCustomerView(customer) })

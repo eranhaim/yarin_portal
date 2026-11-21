@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import { GameMap } from '../../components/GameMap'
+import { Board } from '../../components/Board'
+import { groupColor } from '../../lib/groups'
 import { Icon } from '../../components/Icon'
 import { api, errorMessage } from '../../lib/api'
 import { fromLocalInput, toLocalInput } from '../../lib/format'
@@ -162,7 +163,7 @@ function PlanEditor({ id }: { id: string }) {
 
   const removeChapter = (chapter: DraftChapter) => {
     const hasContent = chapter.tasks.length > 0 || chapter.title
-    if (hasContent && !window.confirm(`Remove the level “${chapter.title || 'Untitled'}” and its ${chapter.tasks.length} tasks?`)) return
+    if (hasContent && !window.confirm(`להסיר את השלב „${chapter.title || 'ללא שם'}” ואת ${chapter.tasks.length} המשימות שלו?`)) return
     setDraft((d) => ({ ...d, chapters: d.chapters.filter((c) => c.key !== chapter.key) }))
   }
 
@@ -182,8 +183,8 @@ function PlanEditor({ id }: { id: string }) {
   const removeTask = (chapterKey: string, task: DraftTask) => {
     const hasMedia = task.id ? assets.some((a) => a.taskId === task.id) : false
     const message = hasMedia
-      ? `Remove the task “${task.title || 'Untitled'}”? Its videos and files are deleted when you save.`
-      : `Remove the task “${task.title || 'Untitled'}”?`
+      ? `להסיר את המשימה „${task.title || 'ללא שם'}”? הסרטונים והקבצים שלה יימחקו בשמירה.`
+      : `להסיר את המשימה „${task.title || 'ללא שם'}”?`
     if ((task.title || hasMedia) && !window.confirm(message)) return
     setDraft((d) => ({
       ...d,
@@ -206,7 +207,7 @@ function PlanEditor({ id }: { id: string }) {
       setSaved(res.plan)
       setDraft(merged)
       setSavedPayload(JSON.stringify(toPayload(merged)))
-      setNotice('Plan saved')
+      setNotice('התוכנית נשמרה')
       if (isNew) navigate(`/admin/plans/${res.plan.id}`, { replace: true })
       else await loadAssets(res.plan.id) // the server removes media of deleted tasks
     } catch (err) {
@@ -218,7 +219,7 @@ function PlanEditor({ id }: { id: string }) {
 
   const deletePlan = async () => {
     if (!saved) return
-    if (!window.confirm(`Delete the plan “${saved.title}” with all its videos and files? This cannot be undone.`)) return
+    if (!window.confirm(`למחוק את התוכנית „${saved.title}” עם כל הסרטונים והקבצים שלה? אי אפשר לבטל את הפעולה.`)) return
     try {
       await api(`/admin/plans/${saved.id}`, { method: 'DELETE' })
       navigate('/admin/plans', { replace: true })
@@ -242,10 +243,10 @@ function PlanEditor({ id }: { id: string }) {
     return (
       <div className="adm-page">
         <Link to="/admin/plans" className="adm-back">
-          <Icon name="arrowLeft" size={16} /> Plans
+          <Icon name="arrowLeft" size={16} /> תוכניות
         </Link>
         <div className="alert alert--error" role="alert">
-          <Icon name="alert" size={18} /> {error ?? 'Plan not found'}
+          <Icon name="alert" size={18} /> {error ?? 'התוכנית לא נמצאה'}
         </div>
       </div>
     )
@@ -256,20 +257,20 @@ function PlanEditor({ id }: { id: string }) {
   return (
     <div className="adm-page adm-editor">
       <Link to="/admin/plans" className="adm-back">
-        <Icon name="arrowLeft" size={16} /> Plans
+        <Icon name="arrowLeft" size={16} /> תוכניות
       </Link>
 
       <header className="adm-page__head">
         <div>
-          <h1>{isNew ? 'New plan' : saved?.title || 'Untitled plan'}</h1>
+          <h1>{isNew ? 'תוכנית חדשה' : saved?.title || 'תוכנית ללא שם'}</h1>
           <p>
-            {draft.chapters.length} level{draft.chapters.length === 1 ? '' : 's'} · {taskTotal} task{taskTotal === 1 ? '' : 's'}
-            {saved && ` · ${saved.customerCount} customer${saved.customerCount === 1 ? '' : 's'}`}
+            {draft.chapters.length} שלבים · {taskTotal} משימות
+            {saved && ` · ${saved.customerCount} לקוחות`}
           </p>
         </div>
         <button type="button" className="btn btn--primary" onClick={() => void save()} disabled={saving || (!dirty && !isNew)}>
           {saving ? <span className="spinner" /> : <Icon name="check" size={18} />}
-          {isNew ? 'Create plan' : 'Save changes'}
+          {isNew ? 'יצירת התוכנית' : 'שמירת שינויים'}
         </button>
       </header>
 
@@ -280,20 +281,20 @@ function PlanEditor({ id }: { id: string }) {
       )}
 
       <section className="adm-card">
-        <h2>Details</h2>
+        <h2>פרטים</h2>
         <div className="adm-form">
           <label className="field">
-            <span className="field__label">Plan title *</span>
+            <span className="field__label">שם התוכנית *</span>
             <input
               className="input"
               value={draft.title}
               onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
-              placeholder="For example: Business growth program"
+              placeholder="לדוגמה: תוכנית צמיחה לעסק"
               autoFocus={isNew}
             />
           </label>
           <label className="field">
-            <span className="field__label">Description</span>
+            <span className="field__label">תיאור</span>
             <textarea
               className="textarea"
               rows={2}
@@ -307,22 +308,22 @@ function PlanEditor({ id }: { id: string }) {
       <section className="adm-card">
         <div className="adm-card__head">
           <div>
-            <h2>Levels and tasks</h2>
-            <p>Each level is a chapter on the customer’s map. Customers open a level after they complete the one before it.</p>
+            <h2>שלבים ומשימות</h2>
+            <p>כל שלב הוא קבוצת צבע בלוח של הלקוח, וכל משימה היא משבצת. שלב נפתח אחרי שהלקוח מסיים את השלב שלפניו.</p>
           </div>
         </div>
 
         <ol className="adm-levels">
           {draft.chapters.map((chapter, ci) => (
-            <li key={chapter.key} className="adm-level">
+            <li key={chapter.key} className="adm-level" style={{ '--group': groupColor(ci) } as CSSProperties}>
               <div className="adm-level__head">
                 <span className="adm-level__badge">{ci + 1}</span>
                 <input
                   className="input adm-level__title"
                   value={chapter.title}
                   onChange={(e) => setChapter(chapter.key, { title: e.target.value })}
-                  placeholder={`Level ${ci + 1} title`}
-                  aria-label={`Level ${ci + 1} title`}
+                  placeholder={`שם שלב ${ci + 1}`}
+                  aria-label={`שם שלב ${ci + 1}`}
                   autoFocus={focusKey === chapter.key}
                 />
                 <div className="adm-level__tools">
@@ -331,7 +332,7 @@ function PlanEditor({ id }: { id: string }) {
                     className="icon-btn"
                     onClick={() => setDraft((d) => ({ ...d, chapters: swap(d.chapters, ci, -1) }))}
                     disabled={ci === 0}
-                    aria-label="Move level up"
+                    aria-label="הזזת השלב למעלה"
                   >
                     <Icon name="arrowUp" size={16} />
                   </button>
@@ -340,11 +341,11 @@ function PlanEditor({ id }: { id: string }) {
                     className="icon-btn"
                     onClick={() => setDraft((d) => ({ ...d, chapters: swap(d.chapters, ci, 1) }))}
                     disabled={ci === draft.chapters.length - 1}
-                    aria-label="Move level down"
+                    aria-label="הזזת השלב למטה"
                   >
                     <Icon name="arrowDown" size={16} />
                   </button>
-                  <button type="button" className="icon-btn icon-btn--danger" onClick={() => removeChapter(chapter)} aria-label="Remove level">
+                  <button type="button" className="icon-btn icon-btn--danger" onClick={() => removeChapter(chapter)} aria-label="הסרת השלב">
                     <Icon name="trash" size={16} />
                   </button>
                   <button
@@ -352,7 +353,7 @@ function PlanEditor({ id }: { id: string }) {
                     className="icon-btn"
                     onClick={() => setChapter(chapter.key, { collapsed: !chapter.collapsed })}
                     aria-expanded={!chapter.collapsed}
-                    aria-label={chapter.collapsed ? 'Expand level' : 'Collapse level'}
+                    aria-label={chapter.collapsed ? 'פתיחת השלב' : 'כיווץ השלב'}
                   >
                     <Icon name={chapter.collapsed ? 'chevronDown' : 'chevronUp'} size={18} />
                   </button>
@@ -366,8 +367,8 @@ function PlanEditor({ id }: { id: string }) {
                     rows={2}
                     value={chapter.description}
                     onChange={(e) => setChapter(chapter.key, { description: e.target.value })}
-                    placeholder="Level description (optional)"
-                    aria-label="Level description"
+                    placeholder="תיאור השלב (לא חובה)"
+                    aria-label="תיאור השלב"
                   />
 
                   <ol className="adm-tasks">
@@ -383,8 +384,8 @@ function PlanEditor({ id }: { id: string }) {
                               className="input adm-task__title"
                               value={task.title}
                               onChange={(e) => setTask(chapter.key, task.key, { title: e.target.value })}
-                              placeholder="Task title"
-                              aria-label={`Task ${ti + 1} title`}
+                              placeholder="שם המשימה"
+                              aria-label={`שם משימה ${ti + 1}`}
                               autoFocus={focusKey === task.key}
                             />
                             <label className="adm-task__due">
@@ -394,7 +395,7 @@ function PlanEditor({ id }: { id: string }) {
                                 type="datetime-local"
                                 value={task.due}
                                 onChange={(e) => setTask(chapter.key, task.key, { due: e.target.value })}
-                                aria-label="Due time"
+                                aria-label="מועד יעד"
                               />
                             </label>
                             <button
@@ -415,7 +416,7 @@ function PlanEditor({ id }: { id: string }) {
                                   setChapter(chapter.key, { tasks: swap(chapter.tasks, ti, -1) })
                                 }
                                 disabled={ti === 0}
-                                aria-label="Move task up"
+                                aria-label="הזזת המשימה למעלה"
                               >
                                 <Icon name="arrowUp" size={15} />
                               </button>
@@ -424,7 +425,7 @@ function PlanEditor({ id }: { id: string }) {
                                 className="icon-btn"
                                 onClick={() => setChapter(chapter.key, { tasks: swap(chapter.tasks, ti, 1) })}
                                 disabled={ti === chapter.tasks.length - 1}
-                                aria-label="Move task down"
+                                aria-label="הזזת המשימה למטה"
                               >
                                 <Icon name="arrowDown" size={15} />
                               </button>
@@ -432,7 +433,7 @@ function PlanEditor({ id }: { id: string }) {
                                 type="button"
                                 className="icon-btn icon-btn--danger"
                                 onClick={() => removeTask(chapter.key, task)}
-                                aria-label="Remove task"
+                                aria-label="הסרת המשימה"
                               >
                                 <Icon name="trash" size={15} />
                               </button>
@@ -446,14 +447,14 @@ function PlanEditor({ id }: { id: string }) {
                                 rows={3}
                                 value={task.description}
                                 onChange={(e) => setTask(chapter.key, task.key, { description: e.target.value })}
-                                placeholder="Instructions for the customer (optional)"
-                                aria-label="Task description"
+                                placeholder="הנחיות ללקוח (לא חובה)"
+                                aria-label="תיאור המשימה"
                               />
                               {mediaReady && saved ? (
                                 <div className="adm-task__media">
                                   <div>
                                     <h4>
-                                      <Icon name="video" size={16} /> Videos
+                                      <Icon name="video" size={16} /> סרטונים
                                     </h4>
                                     <MediaManager
                                       planId={saved.id}
@@ -465,7 +466,7 @@ function PlanEditor({ id }: { id: string }) {
                                   </div>
                                   <div>
                                     <h4>
-                                      <Icon name="file" size={16} /> Files
+                                      <Icon name="file" size={16} /> קבצים
                                     </h4>
                                     <MediaManager
                                       planId={saved.id}
@@ -478,7 +479,7 @@ function PlanEditor({ id }: { id: string }) {
                                 </div>
                               ) : (
                                 <p className="alert alert--info">
-                                  <Icon name="alert" size={16} /> Save the plan to add videos and files to this task.
+                                  <Icon name="alert" size={16} /> שמרו את התוכנית כדי להוסיף סרטונים וקבצים למשימה.
                                 </p>
                               )}
                             </div>
@@ -489,7 +490,7 @@ function PlanEditor({ id }: { id: string }) {
                   </ol>
 
                   <button type="button" className="btn btn--ghost btn--sm adm-add" onClick={() => addTask(chapter.key)}>
-                    <Icon name="plus" size={16} /> Add task
+                    <Icon name="plus" size={16} /> הוספת משימה
                   </button>
                 </div>
               )}
@@ -498,7 +499,7 @@ function PlanEditor({ id }: { id: string }) {
         </ol>
 
         <button type="button" className="btn btn--outline adm-add-level" onClick={addChapter}>
-          <Icon name="plus" size={18} /> Add level
+          <Icon name="plus" size={18} /> הוספת שלב
         </button>
       </section>
 
@@ -507,8 +508,8 @@ function PlanEditor({ id }: { id: string }) {
           <section className="adm-card">
             <div className="adm-card__head">
               <div>
-                <h2>Guidance videos</h2>
-                <p>The plan’s playlist of guidance and instructions. Customers watch it in the library, in this order.</p>
+                <h2>סרטוני הדרכה</h2>
+                <p>רשימת הניגון של התוכנית עם הדרכות והנחיות. הלקוחות צופים בה בספרייה, בסדר הזה.</p>
               </div>
             </div>
             <MediaManager planId={saved.id} taskId={null} kind="video" assets={mediaOf(null, 'video')} onChange={setAssets} />
@@ -517,8 +518,8 @@ function PlanEditor({ id }: { id: string }) {
           <section className="adm-card">
             <div className="adm-card__head">
               <div>
-                <h2>Plan files</h2>
-                <p>Files for the whole plan, such as templates and guides.</p>
+                <h2>קבצי התוכנית</h2>
+                <p>קבצים לכל התוכנית, כמו תבניות ומדריכים.</p>
               </div>
             </div>
             <MediaManager planId={saved.id} taskId={null} kind="file" assets={mediaOf(null, 'file')} onChange={setAssets} />
@@ -527,30 +528,30 @@ function PlanEditor({ id }: { id: string }) {
           <section className="adm-card">
             <div className="adm-card__head">
               <div>
-                <h2>Customers on this plan</h2>
-                <p>Where each customer is on the map. Select an avatar to open the customer.</p>
+                <h2>הלקוחות בתוכנית</h2>
+                <p>איפה כל לקוח נמצא בלוח. לחצו על אסימון כדי לפתוח את הלקוח.</p>
               </div>
             </div>
             {customers.length === 0 ? (
-              <p className="empty-note">No customers have this plan yet. Assign it from a customer’s page.</p>
+              <p className="empty-note">אף לקוח עדיין לא משויך לתוכנית. משייכים מהעמוד של הלקוח.</p>
             ) : saved.chapters.length === 0 ? (
-              <p className="empty-note">Add levels to see the map.</p>
+              <p className="empty-note">הוסיפו שלבים כדי לראות את הלוח.</p>
             ) : (
               <div className="adm-crowd-map">
-                <GameMap
+                <Board
                   plain
-                  levels={saved.chapters.map((c) => ({
+                  title={saved.title}
+                  chapters={saved.chapters.map((c) => ({
                     id: c.id,
                     title: c.title,
                     state: 'current',
-                    total: c.tasks.length,
-                    completed: 0,
+                    tasks: c.tasks.map((t) => ({ id: t.id, title: t.title, started: false, completed: false })),
                   }))}
                   crowd={customers.map((c) => ({
                     id: c.id,
                     name: c.name,
                     avatarUrl: c.avatarUrl,
-                    levelIndex: c.plan?.level.index ?? 0,
+                    position: c.plan?.level.position ?? 0,
                   }))}
                   onSelectPlayer={(customerId) => navigate(`/admin/customers/${customerId}`)}
                 />
@@ -560,30 +561,30 @@ function PlanEditor({ id }: { id: string }) {
 
           <section className="adm-card adm-danger">
             <div>
-              <h2>Delete plan</h2>
+              <h2>מחיקת התוכנית</h2>
               <p>
                 {saved.customerCount > 0
-                  ? `Assign the ${saved.customerCount} customer${saved.customerCount === 1 ? '' : 's'} on this plan a different plan first.`
-                  : 'This deletes the plan and all its videos and files.'}
+                  ? `קודם שייכו תוכנית אחרת ל-${saved.customerCount} הלקוחות בתוכנית הזו.`
+                  : 'הפעולה מוחקת את התוכנית ואת כל הסרטונים והקבצים שלה.'}
               </p>
             </div>
             <button type="button" className="btn btn--danger-soft" onClick={() => void deletePlan()} disabled={saved.customerCount > 0}>
-              <Icon name="trash" size={16} /> Delete plan
+              <Icon name="trash" size={16} /> מחיקת התוכנית
             </button>
           </section>
         </>
       ) : (
         <p className="alert alert--info">
-          <Icon name="alert" size={16} /> Create the plan first. Then you can add guidance videos, files, and media for each task.
+          <Icon name="alert" size={16} /> צרו קודם את התוכנית. אחר כך אפשר להוסיף סרטוני הדרכה, קבצים ומדיה לכל משימה.
         </p>
       )}
 
       {(dirty || notice) && (
         <div className={`adm-savebar${dirty ? '' : ' is-saved'}`} role="status">
-          <span>{dirty ? 'You have unsaved changes' : notice}</span>
+          <span>{dirty ? 'יש שינויים שלא נשמרו' : notice}</span>
           {dirty && (
             <button type="button" className="btn btn--primary btn--sm" onClick={() => void save()} disabled={saving}>
-              {saving && <span className="spinner" />} {isNew ? 'Create plan' : 'Save changes'}
+              {saving && <span className="spinner" />} {isNew ? 'יצירת התוכנית' : 'שמירת שינויים'}
             </button>
           )}
         </div>

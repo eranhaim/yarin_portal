@@ -43,7 +43,7 @@ export async function api<T = unknown>(path: string, options: Options = {}): Pro
     })
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') throw err
-    throw new ApiError(0, 'Cannot reach the server. Check your connection.')
+    throw new ApiError(0, 'אין חיבור לשרת. בדקו את החיבור לאינטרנט.')
   }
 
   const data = (await res.json().catch(() => ({}))) as { error?: string; fields?: Record<string, string> }
@@ -51,12 +51,12 @@ export async function api<T = unknown>(path: string, options: Options = {}): Pro
     if (res.status === 401 && path.startsWith('/admin/') && !['/admin/login', '/admin/me'].includes(path)) {
       window.dispatchEvent(new Event(ADMIN_UNAUTHORIZED))
     }
-    throw new ApiError(res.status, data.error ?? `Request failed (${res.status})`, data.fields ?? {})
+    throw new ApiError(res.status, data.error ?? `הבקשה נכשלה (${res.status})`, data.fields ?? {})
   }
   return data as T
 }
 
 export function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message
-  return 'Something went wrong'
+  return 'משהו השתבש'
 }

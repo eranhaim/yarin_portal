@@ -11,7 +11,7 @@ type Props = {
 }
 
 /** A video player with the list of videos on the side. With one video, it shows only the player. */
-export function VideoPlaylist({ videos, heading = 'Playlist', emptyText = 'No videos yet.' }: Props) {
+export function VideoPlaylist({ videos, heading = 'רשימת ניגון', emptyText = 'אין סרטונים עדיין.' }: Props) {
   const [index, setIndex] = useState(0)
   const [autoAdvance, setAutoAdvance] = useState(false)
 
@@ -42,13 +42,13 @@ export function VideoPlaylist({ videos, heading = 'Playlist', emptyText = 'No vi
             }}
           />
         ) : (
-          <p className="empty-note">This video is not available right now.</p>
+          <p className="empty-note">הסרטון לא זמין כרגע.</p>
         )}
         <div className="vpl__now">
           <h3>{current.title}</h3>
           {hasList && (
             <span>
-              Video {index + 1} of {videos.length}
+              סרטון {index + 1} מתוך {videos.length}
             </span>
           )}
         </div>
@@ -59,7 +59,7 @@ export function VideoPlaylist({ videos, heading = 'Playlist', emptyText = 'No vi
           <header className="vpl__list-head">
             <span className="vpl__list-title">{heading}</span>
             <span className="vpl__list-meta">
-              {videos.length} videos{totalSeconds > 0 ? ` · ${formatDuration(totalSeconds)}` : ''}
+              {videos.length} סרטונים{totalSeconds > 0 ? ` · ${formatDuration(totalSeconds)}` : ''}
             </span>
           </header>
           <ol className="vpl__items">
@@ -86,7 +86,7 @@ export function VideoPlaylist({ videos, heading = 'Playlist', emptyText = 'No vi
                       )}
                     </span>
                     <span className="vpl__item-text">
-                      <span className="vpl__item-index">{active ? 'Now playing' : `Video ${i + 1}`}</span>
+                      <span className="vpl__item-index">{active ? 'מתנגן עכשיו' : `סרטון ${i + 1}`}</span>
                       <span className="vpl__item-title">{video.title}</span>
                     </span>
                   </button>

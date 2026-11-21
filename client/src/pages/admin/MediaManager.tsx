@@ -90,7 +90,7 @@ export function MediaManager({ planId, taskId, kind, assets, onChange }: Props) 
   }
 
   const remove = async (asset: Asset) => {
-    if (!window.confirm(`Delete “${asset.title}”? The file is removed from storage.`)) return
+    if (!window.confirm(`למחוק את „${asset.title}”? הקובץ יימחק מהאחסון.`)) return
     try {
       await api(`/admin/assets/${asset.id}`, { method: 'DELETE' })
       onChange((all) => all.filter((a) => a.id !== asset.id))
@@ -104,7 +104,7 @@ export function MediaManager({ planId, taskId, kind, assets, onChange }: Props) 
       {error && (
         <div className="alert alert--error" role="alert">
           <Icon name="alert" size={16} /> {error}
-          <button type="button" className="icon-btn" onClick={() => setError(null)} aria-label="Dismiss">
+          <button type="button" className="icon-btn" onClick={() => setError(null)} aria-label="סגירה">
             <Icon name="x" size={16} />
           </button>
         </div>
@@ -115,7 +115,7 @@ export function MediaManager({ planId, taskId, kind, assets, onChange }: Props) 
           {assets.map((asset, i) => (
             <li key={asset.id} className="media__item">
               {isVideo ? (
-                <button type="button" className="media__thumb" onClick={() => setPreview(asset)} aria-label={`Preview ${asset.title}`}>
+                <button type="button" className="media__thumb" onClick={() => setPreview(asset)} aria-label={`תצוגה מקדימה: ${asset.title}`}>
                   {asset.posterUrl ? <img src={asset.posterUrl} alt="" /> : <Icon name="video" size={20} />}
                   <span className="media__play">
                     <Icon name="play" size={14} />
@@ -137,27 +137,27 @@ export function MediaManager({ planId, taskId, kind, assets, onChange }: Props) 
                       if (e.key === 'Enter') void saveTitle()
                       if (e.key === 'Escape') setEditing(null)
                     }}
-                    aria-label="Title"
+                    aria-label="כותרת"
                   />
                 ) : (
                   <span className="media__title">{asset.title}</span>
                 )}
                 <span className="media__meta">
                   {isVideo && asset.durationSeconds ? `${formatDuration(asset.durationSeconds)} · ` : ''}
-                  {asset.fileName} · {formatBytes(asset.size)}
+                  <span className="ltr">{formatBytes(asset.size)}</span> · {asset.fileName}
                 </span>
               </div>
 
               <div className="media__actions">
                 {!isVideo && asset.downloadUrl && (
-                  <a className="icon-btn" href={asset.downloadUrl} aria-label="Download" title="Download">
+                  <a className="icon-btn" href={asset.downloadUrl} aria-label="הורדה" title="הורדה">
                     <Icon name="download" size={16} />
                   </a>
                 )}
-                <button type="button" className="icon-btn" onClick={() => setEditing({ id: asset.id, title: asset.title })} aria-label="Rename" title="Rename">
+                <button type="button" className="icon-btn" onClick={() => setEditing({ id: asset.id, title: asset.title })} aria-label="שינוי שם" title="שינוי שם">
                   <Icon name="edit" size={16} />
                 </button>
-                <button type="button" className="icon-btn" onClick={() => void move(i, -1)} disabled={i === 0} aria-label="Move up" title="Move up">
+                <button type="button" className="icon-btn" onClick={() => void move(i, -1)} disabled={i === 0} aria-label="הזזה למעלה" title="הזזה למעלה">
                   <Icon name="arrowUp" size={16} />
                 </button>
                 <button
@@ -165,12 +165,12 @@ export function MediaManager({ planId, taskId, kind, assets, onChange }: Props) 
                   className="icon-btn"
                   onClick={() => void move(i, 1)}
                   disabled={i === assets.length - 1}
-                  aria-label="Move down"
-                  title="Move down"
+                  aria-label="הזזה למטה"
+                  title="הזזה למטה"
                 >
                   <Icon name="arrowDown" size={16} />
                 </button>
-                <button type="button" className="icon-btn icon-btn--danger" onClick={() => void remove(asset)} aria-label="Delete" title="Delete">
+                <button type="button" className="icon-btn icon-btn--danger" onClick={() => void remove(asset)} aria-label="מחיקה" title="מחיקה">
                   <Icon name="trash" size={16} />
                 </button>
               </div>
@@ -185,13 +185,13 @@ export function MediaManager({ planId, taskId, kind, assets, onChange }: Props) 
             <li key={u.key} className={u.error ? 'is-error' : ''}>
               <div className="media__upload-row">
                 <span className="media__upload-name">{u.name}</span>
-                <span>{u.error ? 'Failed' : `${Math.round(u.progress * 100)}%`}</span>
+                <span>{u.error ? 'נכשל' : `${Math.round(u.progress * 100)}%`}</span>
                 {u.error && (
                   <button
                     type="button"
                     className="icon-btn"
                     onClick={() => setUploads((list) => list.filter((x) => x.key !== u.key))}
-                    aria-label="Dismiss"
+                    aria-label="סגירה"
                   >
                     <Icon name="x" size={14} />
                   </button>
@@ -219,9 +219,9 @@ export function MediaManager({ planId, taskId, kind, assets, onChange }: Props) 
         onDrop={onDrop}
       >
         <button type="button" className="btn btn--soft btn--sm" onClick={() => input.current?.click()}>
-          <Icon name="upload" size={15} /> {isVideo ? 'Upload videos' : 'Upload files'}
+          <Icon name="upload" size={15} /> {isVideo ? 'העלאת סרטונים' : 'העלאת קבצים'}
         </button>
-        <span>or drop {isVideo ? 'videos' : 'files'} here · {isVideo ? 'MP4 (H.264) plays everywhere · ' : ''}up to 5 GB each</span>
+        <span>או גררו {isVideo ? 'סרטונים' : 'קבצים'} לכאן · {isVideo ? 'MP4 ‏(H.264) מתנגן בכל מקום · ' : ''}עד 5GB לקובץ</span>
         <input
           ref={input}
           type="file"
@@ -236,7 +236,7 @@ export function MediaManager({ planId, taskId, kind, assets, onChange }: Props) 
         />
       </div>
 
-      <Modal open={preview !== null} onClose={() => setPreview(null)} title={preview?.title ?? 'Video'} size="xl">
+      <Modal open={preview !== null} onClose={() => setPreview(null)} title={preview?.title ?? 'סרטון'} size="xl">
         {preview?.url && <VideoPlayer src={preview.url} poster={preview.posterUrl} title={preview.title} autoPlay />}
       </Modal>
     </div>

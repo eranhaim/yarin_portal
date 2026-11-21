@@ -170,7 +170,7 @@ export function VideoPlayer({ src, poster, title, autoPlay = false, onEnded, dow
       onKeyDown={onKeyDown}
       onPointerMove={wake}
       onPointerLeave={() => playing && setIdle(true)}
-      aria-label={title ? `Video player: ${title}` : 'Video player'}
+      aria-label={title ? `נגן וידאו: ${title}` : 'נגן וידאו'}
     >
       <video
         ref={videoRef}
@@ -211,7 +211,7 @@ export function VideoPlayer({ src, poster, title, autoPlay = false, onEnded, dow
 
       {/* Start screen */}
       {!started && !failed && (
-        <button type="button" className="vp__start" onClick={toggle} aria-label={`Play ${title ?? 'video'}`}>
+        <button type="button" className="vp__start" onClick={toggle} aria-label={`הפעלת ${title ?? 'הסרטון'}`}>
           <span className="vp__start-button">
             <Icon name="play" size={34} />
           </span>
@@ -220,7 +220,7 @@ export function VideoPlayer({ src, poster, title, autoPlay = false, onEnded, dow
         </button>
       )}
 
-      {waiting && playing && <div className="vp__spinner" aria-label="Loading" />}
+      {waiting && playing && <div className="vp__spinner" aria-label="טוען" />}
 
       {flash && (
         <div key={flash.key} className="vp__flash" aria-hidden="true">
@@ -231,10 +231,10 @@ export function VideoPlayer({ src, poster, title, autoPlay = false, onEnded, dow
       {failed && (
         <div className="vp__error">
           <Icon name="alert" size={32} />
-          <p>This video cannot play in your browser.</p>
+          <p>הסרטון לא יכול להתנגן בדפדפן הזה.</p>
           {downloadUrl && (
             <a className="btn btn--light btn--sm" href={downloadUrl}>
-              <Icon name="download" size={16} /> Download the video
+              <Icon name="download" size={16} /> הורדת הסרטון
             </a>
           )}
         </div>
@@ -243,13 +243,13 @@ export function VideoPlayer({ src, poster, title, autoPlay = false, onEnded, dow
       {started && title && <div className="vp__top">{title}</div>}
 
       {started && (
-        <div className="vp__bar" onPointerDown={(e) => e.stopPropagation()}>
+        <div className="vp__bar" dir="ltr" onPointerDown={(e) => e.stopPropagation()}>
           <div
             ref={trackRef}
             className={`vp__track${scrubbing ? ' is-scrubbing' : ''}`}
             role="slider"
             tabIndex={-1}
-            aria-label="Seek"
+            aria-label="מיקום בסרטון"
             aria-valuemin={0}
             aria-valuemax={Math.round(duration)}
             aria-valuenow={Math.round(time)}
@@ -272,13 +272,13 @@ export function VideoPlayer({ src, poster, title, autoPlay = false, onEnded, dow
           </div>
 
           <div className="vp__buttons">
-            <button type="button" className="vp__btn vp__btn--main" onClick={toggle} aria-label={playing ? 'Pause' : 'Play'}>
+            <button type="button" className="vp__btn vp__btn--main" onClick={toggle} aria-label={playing ? 'השהיה' : 'הפעלה'}>
               <Icon name={playing ? 'pause' : 'play'} size={22} />
             </button>
-            <button type="button" className="vp__btn" onClick={() => seekBy(-10)} aria-label="Back 10 seconds">
+            <button type="button" className="vp__btn" onClick={() => seekBy(-10)} aria-label="10 שניות אחורה">
               <Icon name="back10" size={22} />
             </button>
-            <button type="button" className="vp__btn" onClick={() => seekBy(10)} aria-label="Forward 10 seconds">
+            <button type="button" className="vp__btn" onClick={() => seekBy(10)} aria-label="10 שניות קדימה">
               <Icon name="forward10" size={22} />
             </button>
 
@@ -290,7 +290,7 @@ export function VideoPlayer({ src, poster, title, autoPlay = false, onEnded, dow
                   const v = video()
                   if (v) v.muted = !v.muted
                 }}
-                aria-label={muted ? 'Unmute' : 'Mute'}
+                aria-label={muted ? 'ביטול השתקה' : 'השתקה'}
               >
                 <Icon name={muted || volume === 0 ? 'volumeMute' : 'volume'} size={22} />
               </button>
@@ -301,7 +301,7 @@ export function VideoPlayer({ src, poster, title, autoPlay = false, onEnded, dow
                 step={0.05}
                 value={muted ? 0 : volume}
                 onChange={(e) => setVol(Number(e.target.value))}
-                aria-label="Volume"
+                aria-label="עוצמת קול"
                 style={{ '--vp-vol': `${(muted ? 0 : volume) * 100}%` } as CSSProperties}
               />
             </div>
@@ -312,11 +312,11 @@ export function VideoPlayer({ src, poster, title, autoPlay = false, onEnded, dow
 
             <span className="vp__spacer" />
 
-            <button type="button" className="vp__btn vp__btn--rate" onClick={cycleRate} aria-label={`Playback speed ${rate}x`}>
+            <button type="button" className="vp__btn vp__btn--rate" onClick={cycleRate} aria-label={`מהירות ניגון ${rate}x`}>
               {rate}×
             </button>
             {pipSupported && (
-              <button type="button" className="vp__btn" onClick={() => void togglePip()} aria-label="Picture in picture">
+              <button type="button" className="vp__btn" onClick={() => void togglePip()} aria-label="תמונה בתוך תמונה">
                 <Icon name="pip" size={20} />
               </button>
             )}
@@ -324,7 +324,7 @@ export function VideoPlayer({ src, poster, title, autoPlay = false, onEnded, dow
               type="button"
               className="vp__btn"
               onClick={() => void toggleFullscreen()}
-              aria-label={fullscreen ? 'Exit full screen' : 'Full screen'}
+              aria-label={fullscreen ? 'יציאה ממסך מלא' : 'מסך מלא'}
             >
               <Icon name={fullscreen ? 'fullscreenExit' : 'fullscreen'} size={20} />
             </button>

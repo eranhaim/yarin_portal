@@ -61,7 +61,7 @@ export async function readSession(req: Request, role: Role): Promise<string | nu
 
 export async function requireAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {
   if (!(await readSession(req, 'admin'))) {
-    res.status(401).json({ error: 'Admin login required' })
+    res.status(401).json({ error: 'נדרשת התחברות מנהל' })
     return
   }
   next()

@@ -59,15 +59,15 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
         <span className="adm-login__lock">
           <Icon name="lock" size={26} />
         </span>
-        <Logo subtitle="Admin" />
-        <p className="adm-login__sub">Enter the admin password to manage customers and plans.</p>
+        <Logo subtitle="ניהול" />
+        <p className="adm-login__sub">הזינו את סיסמת המנהל כדי לנהל לקוחות ותוכניות.</p>
         {error && (
           <div className="alert alert--error" role="alert">
             <Icon name="alert" size={18} /> {error}
           </div>
         )}
         <label className="field">
-          <span className="field__label">Admin password</span>
+          <span className="field__label">סיסמת מנהל</span>
           <span className="input-group">
             <input
               className="input"
@@ -82,14 +82,14 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
               type="button"
               className="icon-btn input-group__addon"
               onClick={() => setShow((v) => !v)}
-              aria-label={show ? 'Hide password' : 'Show password'}
+              aria-label={show ? 'הסתרת הסיסמה' : 'הצגת הסיסמה'}
             >
               <Icon name={show ? 'eyeOff' : 'eye'} size={18} />
             </button>
           </span>
         </label>
         <button type="submit" className="btn btn--primary btn--lg btn--block" disabled={busy || !password}>
-          {busy && <span className="spinner" />} Enter admin panel
+          {busy && <span className="spinner" />} כניסה לניהול
         </button>
       </form>
     </div>
@@ -118,25 +118,30 @@ function AdminShell({ onLogout }: { onLogout: () => void }) {
       <header className="adm-top">
         <div className="adm-top__inner">
           <NavLink to="/admin/customers" className="adm-top__logo">
-            <Logo subtitle="Admin" />
+            <Logo subtitle="ניהול" />
           </NavLink>
-          <nav className="adm-top__nav" aria-label="Admin">
+          <nav className="adm-top__nav" aria-label="ניווט ניהול">
             <NavLink to="/admin/customers" className="adm-top__link">
-              <Icon name="users" size={18} /> Customers
+              <Icon name="users" size={18} /> לקוחות
             </NavLink>
             <NavLink to="/admin/plans" className="adm-top__link">
-              <Icon name="layers" size={18} /> Plans
+              <Icon name="layers" size={18} /> תוכניות
             </NavLink>
           </nav>
           {status && (
-            <div className="adm-top__status" title={`Database: ${status.db} · Storage: ${status.storage.status}`}>
-              <span className={`adm-dot${dbOk ? ' is-ok' : ''}`} /> DB
-              <span className={`adm-dot${storageOk ? ' is-ok' : ''}`} /> Storage
+            <div className="adm-top__status" title={`מסד נתונים: ${status.db} · אחסון: ${status.storage.status}`}>
+              <span className={`adm-dot${dbOk ? ' is-ok' : ''}`} /> מסד נתונים
+              <span className={`adm-dot${storageOk ? ' is-ok' : ''}`} /> אחסון
             </div>
           )}
           <button type="button" className="btn btn--ghost btn--sm" onClick={logout}>
-            <Icon name="logout" size={16} /> Log out
+            <Icon name="logout" size={16} /> התנתקות
           </button>
+        </div>
+        <div className="adm-stripes" aria-hidden="true">
+          {Array.from({ length: 8 }, (_, i) => (
+            <i key={i} style={{ background: `var(--g${i + 1})` }} />
+          ))}
         </div>
       </header>
       <main className="adm-main">

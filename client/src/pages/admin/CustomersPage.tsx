@@ -33,8 +33,8 @@ export function CustomersPage() {
     <div className="adm-page">
       <header className="adm-page__head">
         <div>
-          <h1>Customers</h1>
-          <p>{customers ? `${customers.length} customer${customers.length === 1 ? '' : 's'}` : 'Loading…'}</p>
+          <h1>לקוחות</h1>
+          <p>{customers ? (customers.length === 1 ? 'לקוח אחד' : `${customers.length} לקוחות`) : 'טוען…'}</p>
         </div>
         <div className="adm-page__actions">
           <label className="adm-search">
@@ -42,14 +42,14 @@ export function CustomersPage() {
             <input
               className="input"
               type="search"
-              placeholder="Search name, email, phone…"
+              placeholder="חיפוש לפי שם, אימייל, טלפון…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              aria-label="Search customers"
+              aria-label="חיפוש לקוחות"
             />
           </label>
           <button type="button" className="btn btn--primary" onClick={() => setFormOpen(true)}>
-            <Icon name="plus" size={18} /> New customer
+            <Icon name="plus" size={18} /> לקוח חדש
           </button>
         </div>
       </header>
@@ -69,15 +69,15 @@ export function CustomersPage() {
           <span className="adm-empty__icon">
             <Icon name="users" size={30} />
           </span>
-          <h2>No customers yet</h2>
-          <p>Add your first customer. You set their password, and they sign in on the main page.</p>
+          <h2>עדיין אין לקוחות</h2>
+          <p>הוסיפו את הלקוח הראשון. אתם קובעים לו סיסמה, והוא נכנס בעמוד הראשי.</p>
           <button type="button" className="btn btn--primary" onClick={() => setFormOpen(true)}>
-            <Icon name="plus" size={18} /> New customer
+            <Icon name="plus" size={18} /> לקוח חדש
           </button>
         </div>
       ) : (
         <>
-          {filtered.length === 0 && <p className="empty-note">No customers match “{query}”.</p>}
+          {filtered.length === 0 && <p className="empty-note">אין לקוחות שמתאימים ל„{query}”.</p>}
           <ul className="adm-customers">
             {filtered.map((c) => (
               <li key={c.id}>
@@ -88,15 +88,15 @@ export function CustomersPage() {
                       <span className="adm-customer__name">{c.name}</span>
                       {c.company && <span className="adm-customer__company">{c.company}</span>}
                     </div>
-                    {!c.active && <span className="chip chip--danger">Inactive</span>}
+                    {!c.active && <span className="chip chip--danger">לא פעיל</span>}
                   </div>
                   <div className="adm-customer__contact">
                     <span>
-                      <Icon name="mail" size={15} /> {c.email}
+                      <Icon name="mail" size={15} /> <span className="ltr">{c.email}</span>
                     </span>
                     {c.phone && (
                       <span>
-                        <Icon name="phone" size={15} /> {c.phone}
+                        <Icon name="phone" size={15} /> <span className="ltr">{c.phone}</span>
                       </span>
                     )}
                   </div>
@@ -114,11 +114,11 @@ export function CustomersPage() {
                           />
                         </div>
                         <span className="adm-customer__plan-meta">
-                          {c.plan.completed}/{c.plan.total} tasks completed
+                          {c.plan.completed}/{c.plan.total} משימות בוצעו
                         </span>
                       </>
                     ) : (
-                      <span className="adm-customer__plan-none">No plan assigned</span>
+                      <span className="adm-customer__plan-none">לא שויכה תוכנית</span>
                     )}
                   </div>
                 </Link>

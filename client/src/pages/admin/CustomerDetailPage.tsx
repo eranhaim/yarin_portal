@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { Avatar } from '../../components/Avatar'
-import { GameMap } from '../../components/GameMap'
+import { Board } from '../../components/Board'
+import { groupColor } from '../../lib/groups'
 import { Icon } from '../../components/Icon'
 import { TaskStatusControl } from '../../components/TaskStatusControl'
 import { api, errorMessage } from '../../lib/api'
@@ -46,7 +47,7 @@ function CustomerDetail({ id }: { id: string }) {
 
   const assignPlan = async (planId: string) => {
     if (!customer) return
-    if (customer.plan && !window.confirm(`Change the plan? The progress on “${customer.plan.title}” will be reset.`)) return
+    if (customer.plan && !window.confirm(`להחליף את התוכנית? ההתקדמות ב„${customer.plan.title}” תתאפס.`)) return
     try {
       const res = await api<{ customer: AdminCustomer; plan: PlanProgress | null }>(`/admin/customers/${customer.id}/plan`, {
         method: 'PUT',
@@ -81,7 +82,7 @@ function CustomerDetail({ id }: { id: string }) {
 
   const remove = async () => {
     if (!customer) return
-    if (!window.confirm(`Delete ${customer.name}? This cannot be undone.`)) return
+    if (!window.confirm(`למחוק את ${customer.name}? אי אפשר לבטל את הפעולה.`)) return
     try {
       await api(`/admin/customers/${customer.id}`, { method: 'DELETE' })
       navigate('/admin/customers', { replace: true })
@@ -94,7 +95,7 @@ function CustomerDetail({ id }: { id: string }) {
     return (
       <div className="adm-page">
         <Link to="/admin/customers" className="adm-back">
-          <Icon name="arrowLeft" size={16} /> Customers
+          <Icon name="arrowLeft" size={16} /> לקוחות
         </Link>
         <div className="alert alert--error" role="alert">
           <Icon name="alert" size={18} /> {error}
@@ -114,7 +115,7 @@ function CustomerDetail({ id }: { id: string }) {
   return (
     <div className="adm-page">
       <Link to="/admin/customers" className="adm-back">
-        <Icon name="arrowLeft" size={16} /> Customers
+        <Icon name="arrowLeft" size={16} /> לקוחות
       </Link>
 
       {error && (
@@ -129,36 +130,36 @@ function CustomerDetail({ id }: { id: string }) {
           <h1>{customer.name}</h1>
           {customer.company && <p className="adm-profile__company">{customer.company}</p>}
           <span className={`chip ${customer.active ? 'chip--success' : 'chip--danger'}`}>
-            {customer.active ? 'Active' : 'Inactive'}
+            {customer.active ? 'פעיל' : 'לא פעיל'}
           </span>
           <dl className="adm-profile__facts">
             <div>
               <dt>
-                <Icon name="mail" size={15} /> Email
+                <Icon name="mail" size={15} /> אימייל
               </dt>
               <dd>
-                <a href={`mailto:${customer.email}`}>{customer.email}</a>
+                <a href={`mailto:${customer.email}`} className="ltr">{customer.email}</a>
               </dd>
             </div>
             {customer.phone && (
               <div>
                 <dt>
-                  <Icon name="phone" size={15} /> Phone
+                  <Icon name="phone" size={15} /> טלפון
                 </dt>
                 <dd>
-                  <a href={`tel:${customer.phone.replace(/[^\d+]/g, '')}`}>{customer.phone}</a>
+                  <a href={`tel:${customer.phone.replace(/[^\d+]/g, '')}`} className="ltr">{customer.phone}</a>
                 </dd>
               </div>
             )}
             <div>
               <dt>
-                <Icon name="clock" size={15} /> Last sign-in
+                <Icon name="clock" size={15} /> כניסה אחרונה
               </dt>
-              <dd>{customer.lastLoginAt ? formatDateTime(customer.lastLoginAt) : 'Never'}</dd>
+              <dd>{customer.lastLoginAt ? formatDateTime(customer.lastLoginAt) : 'עדיין לא נכנס/ה'}</dd>
             </div>
             <div>
               <dt>
-                <Icon name="users" size={15} /> Customer since
+                <Icon name="users" size={15} /> לקוח/ה מאז
               </dt>
               <dd>{formatDate(customer.createdAt)}</dd>
             </div>
@@ -166,10 +167,10 @@ function CustomerDetail({ id }: { id: string }) {
           {customer.notes && <p className="adm-profile__notes">{customer.notes}</p>}
           <div className="adm-profile__actions">
             <button type="button" className="btn btn--outline btn--block" onClick={() => setEditOpen(true)}>
-              <Icon name="edit" size={16} /> Edit details
+              <Icon name="edit" size={16} /> עריכת פרטים
             </button>
             <button type="button" className="btn btn--danger-soft btn--block" onClick={remove}>
-              <Icon name="trash" size={16} /> Delete customer
+              <Icon name="trash" size={16} /> מחיקת לקוח
             </button>
           </div>
         </aside>
@@ -178,16 +179,16 @@ function CustomerDetail({ id }: { id: string }) {
           <section className="adm-card">
             <div className="adm-card__head">
               <div>
-                <h2>Plan</h2>
-                <p>The customer sees the plan as a map. Each chapter is a level.</p>
+                <h2>תוכנית</h2>
+                <p>הלקוח רואה את התוכנית כלוח משחק. כל שלב הוא קבוצת צבע בלוח.</p>
               </div>
               <select
                 className="select adm-plan-select"
                 value={customer.plan?.id ?? ''}
                 onChange={(e) => void assignPlan(e.target.value)}
-                aria-label="Assigned plan"
+                aria-label="התוכנית המשויכת"
               >
-                <option value="">No plan</option>
+                <option value="">ללא תוכנית</option>
                 {plans.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.title}
@@ -199,64 +200,59 @@ function CustomerDetail({ id }: { id: string }) {
             {customer.plan && progress ? (
               <div className="adm-stats">
                 <div>
-                  <span>Position</span>
+                  <span>מיקום</span>
                   <strong>
                     <LevelBadge level={progress.level} />
                   </strong>
                   {progress.level.title && !progress.level.finished && <small>{progress.level.title}</small>}
                 </div>
                 <div>
-                  <span>Completed</span>
+                  <span>בוצעו</span>
                   <strong>
                     {progress.summary.completed}/{progress.summary.total}
                   </strong>
-                  <small>tasks</small>
+                  <small>משימות</small>
                 </div>
                 <div>
-                  <span>In progress</span>
+                  <span>בתהליך</span>
                   <strong>{progress.summary.started}</strong>
-                  <small>tasks</small>
+                  <small>משימות</small>
                 </div>
                 <div>
-                  <span>Assigned</span>
+                  <span>שויכה ב-</span>
                   <strong>{formatDate(progress.assignedAt)}</strong>
                 </div>
               </div>
             ) : (
-              <p className="empty-note">No plan assigned. Choose a plan above.</p>
+              <p className="empty-note">לא שויכה תוכנית. בחרו תוכנית למעלה.</p>
             )}
           </section>
 
           {progress && (
             <div className="adm-detail__split">
               <section className="adm-card adm-card--map">
-                <h2>Map position</h2>
-                <GameMap
-                  levels={progress.chapters.map((c) => ({
-                    id: c.id,
-                    title: c.title,
-                    state: c.state,
-                    total: c.tasks.length,
-                    completed: c.completedCount,
-                  }))}
+                <h2>המיקום בלוח</h2>
+                <Board
+                  chapters={progress.chapters}
                   player={{
                     id: customer.id,
                     name: customer.name,
                     avatarUrl: customer.avatarUrl,
-                    levelIndex: progress.level.index,
+                    position: progress.level.position,
                   }}
-                  onSelectLevel={(i) => setOpenChapter(progress.chapters[i]!.id)}
+                  onSelectChapter={(i) => setOpenChapter(progress.chapters[i]!.id)}
+                  onSelectTask={(i) => setOpenChapter(progress.chapters[i]!.id)}
                 />
               </section>
 
               <section className="adm-card">
-                <h2>Tasks</h2>
-                <p className="adm-card__sub">You can change the status of any task for this customer.</p>
+                <h2>משימות</h2>
+                <p className="adm-card__sub">אפשר לשנות את הסטטוס של כל משימה ללקוח הזה.</p>
                 <div className="adm-chapters">
                   {progress.chapters.map((chapter, i) => {
                     const open = openChapter === chapter.id
                     return (
-                      <div key={chapter.id} className={`adm-chapter adm-chapter--${chapter.state}`}>
+                      <div key={chapter.id} className={`adm-chapter adm-chapter--${chapter.state}`} style={{ '--group': groupColor(i) } as CSSProperties}>
                         <button
                           type="button"
                           className="adm-chapter__head"
@@ -272,7 +268,7 @@ function CustomerDetail({ id }: { id: string }) {
                         </button>
                         {open && (
                           <ul className="adm-chapter__tasks">
-                            {chapter.tasks.length === 0 && <li className="adm-muted">No tasks in this level.</li>}
+                            {chapter.tasks.length === 0 && <li className="adm-muted">אין משימות בשלב הזה.</li>}
                             {chapter.tasks.map((task) => {
                               const due = dueInfo(task.dueAt, task.completed)
                               return (

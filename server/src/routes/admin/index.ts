@@ -15,10 +15,10 @@ export const adminRouter = Router()
 // ---------- Admin session (password from ADMIN_PASSWORD in .env) ----------
 
 adminRouter.post('/login', loginRateLimit(), async (req, res) => {
-  const body = parseBody(z.object({ password: z.string().min(1, 'Enter the admin password').max(200) }), req, res)
+  const body = parseBody(z.object({ password: z.string().min(1, 'הזינו את סיסמת המנהל').max(200) }), req, res)
   if (!body) return
   if (!isAdminPassword(body.password)) {
-    res.status(401).json({ error: 'Incorrect password' })
+    res.status(401).json({ error: 'סיסמה שגויה' })
     return
   }
   await startSession(res, 'admin', 'admin')

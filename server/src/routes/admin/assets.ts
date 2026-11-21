@@ -19,7 +19,7 @@ export const assetsRouter = Router()
 
 const MAX_UPLOAD_BYTES = 5 * 1024 ** 3 // 5 GB: the limit of a single S3 PUT
 
-const objectId = z.string().refine(isValidObjectId, 'Invalid id')
+const objectId = z.string().refine(isValidObjectId, 'מזהה לא תקין')
 
 const createAssetSchema = z.object({
   kind: z.enum(['video', 'file']),
@@ -27,7 +27,7 @@ const createAssetSchema = z.object({
   title: z.string().trim().max(200).optional(),
   fileName: z.string().trim().min(1).max(255),
   contentType: z.string().trim().max(200).default('application/octet-stream'),
-  size: z.number().int().positive().max(MAX_UPLOAD_BYTES, 'Files can be at most 5 GB'),
+  size: z.number().int().positive().max(MAX_UPLOAD_BYTES, 'גודל קובץ מקסימלי: 5GB'),
   durationSeconds: z.number().positive().nullable().optional(),
 })
 
@@ -46,13 +46,13 @@ function titleFromFileName(name: string): string {
 
 async function findAsset(id: string, res: Response): Promise<AssetDoc | null> {
   const asset = isValidObjectId(id) ? await Asset.findById(id) : null
-  if (!asset) res.status(404).json({ error: 'File not found' })
+  if (!asset) res.status(404).json({ error: 'הקובץ לא נמצא' })
   return asset
 }
 
 assetsRouter.get('/plans/:planId/assets', async (req, res) => {
   if (!isValidObjectId(req.params.planId)) {
-    res.status(404).json({ error: 'Plan not found' })
+    res.status(404).json({ error: 'התוכנית לא נמצאה' })
     return
   }
   const assets = await Asset.find({ planId: req.params.planId, status: 'ready' }).sort({ order: 1, createdAt: 1 })
@@ -61,7 +61,7 @@ assetsRouter.get('/plans/:planId/assets', async (req, res) => {
 
 assetsRouter.post('/plans/:planId/assets', async (req, res) => {
   if (!storageEnabled) {
-    res.status(503).json({ error: 'File storage is not configured' })
+    res.status(503).json({ error: 'אחסון הקבצים לא מוגדר' })
     return
   }
   const body = parseBody(createAssetSchema, req, res)
@@ -69,15 +69,15 @@ assetsRouter.post('/plans/:planId/assets', async (req, res) => {
 
   const plan = isValidObjectId(req.params.planId) ? await Plan.findById(req.params.planId) : null
   if (!plan) {
-    res.status(404).json({ error: 'Plan not found' })
+    res.status(404).json({ error: 'התוכנית לא נמצאה' })
     return
   }
   if (body.taskId && !planTaskIds(plan).has(body.taskId)) {
-    res.status(404).json({ error: 'Task not found in this plan. Save the plan first.' })
+    res.status(404).json({ error: 'המשימה לא נמצאה בתוכנית. שמרו את התוכנית קודם.' })
     return
   }
   if (body.kind === 'video' && !body.contentType.startsWith('video/')) {
-    res.status(415).json({ error: 'This is not a video file. Use MP4 (H.264) for the best support.' })
+    res.status(415).json({ error: 'זה לא קובץ וידאו. השתמשו בקובץ MP4 (H.264) לתמיכה הטובה ביותר.' })
     return
   }
 
@@ -113,7 +113,7 @@ assetsRouter.put('/assets/:id/poster', express.raw({ type: POSTER_TYPES, limit: 
   const data: unknown = req.body
   const type = req.headers['content-type'] ?? ''
   if (!Buffer.isBuffer(data) || data.length === 0 || !POSTER_TYPES.includes(type)) {
-    res.status(415).json({ error: 'Send a JPEG, WebP or PNG image' })
+    res.status(415).json({ error: 'שלחו תמונה מסוג JPEG, WebP או PNG' })
     return
   }
   const ext = type.split('/')[1]
@@ -130,7 +130,7 @@ assetsRouter.post('/assets/:id/complete', async (req, res) => {
   if (!asset) return
   const head = await headObject(asset.key)
   if (!head) {
-    res.status(409).json({ error: 'The upload did not reach the storage. Try again.' })
+    res.status(409).json({ error: 'ההעלאה לא הגיעה לאחסון. נסו שוב.' })
     return
   }
   asset.size = head.size
@@ -142,7 +142,7 @@ assetsRouter.post('/assets/:id/complete', async (req, res) => {
 assetsRouter.patch('/assets/:id', async (req, res) => {
   const body = parseBody(
     z.object({
-      title: z.string().trim().min(1, 'Title is required').max(200).optional(),
+      title: z.string().trim().min(1, 'חובה למלא כותרת').max(200).optional(),
       durationSeconds: z.number().positive().nullable().optional(),
     }),
     req,

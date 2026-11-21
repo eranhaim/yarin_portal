@@ -18,7 +18,8 @@ export type Asset = {
   posterUrl: string | null
 }
 
-export type LevelInfo = { index: number; total: number; finished: boolean; title: string | null }
+/** position = the customer's square on the board (index over all tasks; the task count when finished). */
+export type LevelInfo = { index: number; position: number; total: number; finished: boolean; title: string | null }
 
 export type CustomerSelf = {
   id: string

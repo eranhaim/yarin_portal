@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { FileList } from '../../components/FileList'
 import { Icon } from '../../components/Icon'
 import { VideoPlaylist } from '../../components/VideoPlaylist'
@@ -10,24 +11,28 @@ export function LibraryPage() {
 
   return (
     <div className="cx-library">
-      <header className="cx-library__head">
-        <p className="cx-eyebrow">{plan.title}</p>
-        <h1>Guidance library</h1>
-        <p>Videos with guidance and instructions for your plan, and the files you need along the way.</p>
+      <header className="cx-deed cx-library__head" style={{ '--group': 'var(--teal)' } as CSSProperties}>
+        <div className="cx-deed__band">
+          <span className="cx-deed__eyebrow">{plan.title}</span>
+          <h1>ספריית ההדרכה</h1>
+        </div>
+        <div className="cx-deed__body">
+          <p>סרטוני הדרכה והנחיות לתוכנית שלכם, וכל הקבצים שתצטרכו בדרך.</p>
+        </div>
       </header>
 
       <section className="cx-section">
         <h2 className="cx-section__title">
-          <Icon name="video" size={20} /> Guidance videos
+          <Icon name="video" size={20} /> סרטוני הדרכה
         </h2>
-        <VideoPlaylist videos={plan.videos} heading="Guidance videos" emptyText="There are no guidance videos yet." />
+        <VideoPlaylist videos={plan.videos} heading="סרטוני הדרכה" emptyText="אין עדיין סרטוני הדרכה." />
       </section>
 
       <section className="cx-section">
         <h2 className="cx-section__title">
-          <Icon name="file" size={20} /> Plan files
+          <Icon name="file" size={20} /> קבצי התוכנית
         </h2>
-        <FileList files={plan.files} emptyText="There are no files yet." />
+        <FileList files={plan.files} emptyText="אין עדיין קבצים." />
       </section>
     </div>
   )

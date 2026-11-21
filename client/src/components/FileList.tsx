@@ -32,7 +32,7 @@ export function FileBadge({ fileName }: { fileName: string }) {
   )
 }
 
-export function FileList({ files, emptyText = 'No files yet.' }: { files: Asset[]; emptyText?: string }) {
+export function FileList({ files, emptyText = 'אין קבצים עדיין.' }: { files: Asset[]; emptyText?: string }) {
   if (files.length === 0) return <p className="empty-note">{emptyText}</p>
   return (
     <ul className="file-list">
@@ -42,13 +42,13 @@ export function FileList({ files, emptyText = 'No files yet.' }: { files: Asset[
           <div className="file-list__text">
             <span className="file-list__title">{file.title}</span>
             <span className="file-list__meta">
-              {file.fileName} · {formatBytes(file.size)}
+              <span className="ltr">{formatBytes(file.size)}</span> · {file.fileName}
             </span>
           </div>
           {file.downloadUrl && (
             <a className="btn btn--soft btn--sm" href={file.downloadUrl} download={file.fileName}>
               <Icon name="download" size={16} />
-              <span>Download</span>
+              <span>הורדה</span>
             </a>
           )}
         </li>

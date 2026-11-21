@@ -13,13 +13,13 @@ export async function squareImage(file: File, size = 512): Promise<Blob> {
   canvas.width = size
   canvas.height = size
   const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('Your browser cannot process images')
+  if (!ctx) throw new Error('הדפדפן לא יכול לעבד תמונות')
   ctx.imageSmoothingQuality = 'high'
   ctx.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, size, size)
   bitmap.close()
   // Browsers without WebP encoding (older Safari) return PNG instead; the server accepts both.
   const blob = (await canvasToBlob(canvas, 'image/webp', 0.86)) ?? (await canvasToBlob(canvas, 'image/png', 1))
-  if (!blob) throw new Error('Could not process the image')
+  if (!blob) throw new Error('לא הצלחנו לעבד את התמונה')
   return blob
 }
 

@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { Link, useParams } from 'react-router'
+import { groupColor } from '../../lib/groups'
 import { FileList } from '../../components/FileList'
 import { Icon } from '../../components/Icon'
 import { TaskStatusControl } from '../../components/TaskStatusControl'
@@ -25,9 +26,9 @@ export function TaskPage() {
   if (!chapter || !task || chapter.state === 'locked') {
     return (
       <div className="cx-empty">
-        <h2>{chapter?.state === 'locked' ? 'This level is locked' : 'Task not found'}</h2>
+        <h2>{chapter?.state === 'locked' ? 'השלב הזה עדיין נעול' : 'המשימה לא נמצאה'}</h2>
         <Link to="/map" className="btn btn--light">
-          Back to the map
+          חזרה ללוח
         </Link>
       </div>
     )
@@ -51,24 +52,26 @@ export function TaskPage() {
   }
 
   return (
-    <div className="cx-taskpage">
+    <div className="cx-taskpage" style={{ '--group': groupColor(chapterIndex) } as CSSProperties}>
       <Link to={`/level/${chapter.id}`} className="cx-back">
-        <Icon name="arrowLeft" size={18} /> Level {chapterIndex + 1}: {chapter.title}
+        <Icon name="arrowLeft" size={18} /> שלב {chapterIndex + 1}: {chapter.title}
       </Link>
 
-      <header className="cx-taskpage__head">
-        <div>
-          <p className="cx-eyebrow">
-            Task {taskIndex + 1} of {chapter.tasks.length}
-          </p>
+      <header className="cx-deed cx-taskpage__head">
+        <div className="cx-deed__band">
+          <span className="cx-deed__eyebrow">
+            משימה {taskIndex + 1} מתוך {chapter.tasks.length}
+          </span>
           <h1>{task.title}</h1>
-          {due && (
+        </div>
+        <div className="cx-deed__body cx-taskpage__meta">
+          {due ? (
             <span className={`cx-due cx-due--${due.tone}`}>
               <Icon name="clock" size={14} /> {due.label}
             </span>
+          ) : (
+            <span />
           )}
-        </div>
-        <div className="cx-taskpage__status">
           <TaskStatusControl value={status} onChange={(v) => void change(v)} disabled={busy} />
         </div>
       </header>
@@ -79,28 +82,35 @@ export function TaskPage() {
         </div>
       )}
 
-      {task.description && <p className="cx-taskpage__description">{task.description}</p>}
+      {task.description && (
+        <section className="cx-paper cx-taskpage__description">
+          <h2 className="cx-paper__title">
+            <Icon name="list" size={18} /> מה עושים?
+          </h2>
+          <p>{task.description}</p>
+        </section>
+      )}
 
       {task.videos.length > 0 && (
         <section className="cx-section">
           <h2 className="cx-section__title">
-            <Icon name="video" size={20} /> Videos
+            <Icon name="video" size={20} /> סרטונים
           </h2>
-          <VideoPlaylist videos={task.videos} heading="Task videos" />
+          <VideoPlaylist videos={task.videos} heading="סרטוני המשימה" />
         </section>
       )}
 
       {task.files.length > 0 && (
         <section className="cx-section">
           <h2 className="cx-section__title">
-            <Icon name="file" size={20} /> Files
+            <Icon name="file" size={20} /> קבצים להורדה
           </h2>
           <FileList files={task.files} />
         </section>
       )}
 
       {task.videos.length === 0 && task.files.length === 0 && !task.description && (
-        <p className="empty-note">There are no videos or files for this task.</p>
+        <p className="empty-note">אין סרטונים או קבצים למשימה הזו.</p>
       )}
 
       {status !== 'completed' && (
@@ -112,17 +122,17 @@ export function TaskPage() {
             onClick={() => void change(status === 'not_started' ? 'started' : 'completed')}
           >
             <Icon name={status === 'not_started' ? 'play' : 'check'} size={18} />
-            {status === 'not_started' ? 'Start this task' : 'Mark as completed'}
+            {status === 'not_started' ? 'מתחילים את המשימה' : 'סיימתי! סימון כבוצע'}
           </button>
         </div>
       )}
 
-      <nav className="cx-taskpage__pager" aria-label="Other tasks in this level">
+      <nav className="cx-taskpage__pager" aria-label="משימות נוספות בשלב">
         {prev ? (
           <Link to={`/level/${chapter.id}/task/${prev.id}`} className="cx-pager">
             <Icon name="chevronLeft" size={18} />
             <span>
-              <small>Previous task</small>
+              <small>המשימה הקודמת</small>
               {prev.title}
             </span>
           </Link>
@@ -132,7 +142,7 @@ export function TaskPage() {
         {next ? (
           <Link to={`/level/${chapter.id}/task/${next.id}`} className="cx-pager cx-pager--next">
             <span>
-              <small>Next task</small>
+              <small>המשימה הבאה</small>
               {next.title}
             </span>
             <Icon name="chevronRight" size={18} />
@@ -140,8 +150,8 @@ export function TaskPage() {
         ) : (
           <Link to={`/level/${chapter.id}`} className="cx-pager cx-pager--next">
             <span>
-              <small>All tasks</small>
-              Back to the level
+              <small>כל המשימות</small>
+              חזרה לשלב
             </span>
             <Icon name="chevronRight" size={18} />
           </Link>

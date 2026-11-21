@@ -1,13 +1,14 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { GameMap, type MapLevel } from '../../components/GameMap'
+import { Board, type BoardChapter } from '../../components/Board'
+import { groupColor } from '../../lib/groups'
 import { Icon } from '../../components/Icon'
 import { dueInfo } from '../../lib/format'
 import { useCustomer } from './customerContext'
 import { NoPlan } from './NoPlan'
 
-/** Remembers the last level the customer saw, so the character can walk to a new level. */
-function useLastSeenLevel(key: string, current: number) {
+/** Remembers the last square the customer saw, so the token can hop to a new position. */
+function useLastSeenPosition(key: string, current: number) {
   const read = () => {
     try {
       const value = localStorage.getItem(key)
@@ -21,7 +22,7 @@ function useLastSeenLevel(key: string, current: number) {
     try {
       localStorage.setItem(key, String(current))
     } catch {
-      // Storage can be blocked (private mode). The map still works without it.
+      // Storage can be blocked (private mode). The board still works without it.
     }
   }
   return { lastSeen, save }
@@ -30,83 +31,141 @@ function useLastSeenLevel(key: string, current: number) {
 export function MapPage() {
   const { me, plan } = useCustomer()
   if (!plan) return <NoPlan name={me.name} />
-  return <PlanMap key={plan.id} />
+  return <PlanBoard key={plan.id} />
 }
 
-function PlanMap() {
+function PlanBoard() {
   const { me, plan } = useCustomer()
   const navigate = useNavigate()
   const p = plan!
-  const { lastSeen, save } = useLastSeenLevel(`yp:map:${me.id}:${p.id}`, p.level.index)
+  const { lastSeen, save } = useLastSeenPosition(`yp:board:${me.id}:${p.id}`, p.level.position)
 
-  const levels: MapLevel[] = p.chapters.map((c) => ({
-    id: c.id,
-    title: c.title,
-    state: c.state,
-    total: c.tasks.length,
-    completed: c.completedCount,
-  }))
+  const chapters: BoardChapter[] = useMemo(
+    () =>
+      p.chapters.map((c) => ({
+        id: c.id,
+        title: c.title,
+        state: c.state,
+        tasks: c.tasks.map((t) => ({ id: t.id, title: t.title, started: t.started, completed: t.completed })),
+      })),
+    [p],
+  )
 
   const current = p.chapters[p.level.index]
+  const nextTask = current?.tasks.find((t) => !t.completed)
   const percent = p.summary.total ? Math.round((p.summary.completed / p.summary.total) * 100) : 0
+  const nextDue = nextTask ? dueInfo(nextTask.dueAt, nextTask.completed) : null
 
   const upcoming = useMemo(
     () =>
       p.chapters
         .filter((c) => c.state !== 'locked')
-        .flatMap((c) => c.tasks.filter((t) => !t.completed).map((t) => ({ task: t, chapter: c })))
-        .sort((a, b) => (a.task.dueAt ?? '9999').localeCompare(b.task.dueAt ?? '9999'))
+        .flatMap((c) => c.tasks.filter((t) => !t.completed && t.dueAt).map((t) => ({ task: t, chapter: c })))
+        .sort((a, b) => (a.task.dueAt ?? '').localeCompare(b.task.dueAt ?? ''))
         .slice(0, 3),
     [p],
   )
 
   return (
     <div className="cx-map">
+      <section className="cx-map__board" aria-label="לוח המשחק שלך">
+        <Board
+          chapters={chapters}
+          title={p.title}
+          player={{ id: me.id, name: me.name, avatarUrl: me.avatarUrl, position: p.level.position }}
+          animateFrom={lastSeen}
+          onArrive={save}
+          onSelectTask={(ci, ti) => navigate(`/level/${p.chapters[ci]!.id}/task/${p.chapters[ci]!.tasks[ti]!.id}`)}
+          onSelectChapter={(ci) => navigate(`/level/${p.chapters[ci]!.id}`)}
+          center={
+            <div className="cx-decks">
+              <Link to="/library" className="cx-deck cx-deck--videos">
+                <span className="cx-deck__icon">
+                  <Icon name="video" size={22} />
+                </span>
+                <span className="cx-deck__title">ספריית הסרטונים</span>
+                <span className="cx-deck__count">{p.videos.length} סרטונים</span>
+              </Link>
+              <Link to="/library" className="cx-deck cx-deck--files">
+                <span className="cx-deck__icon">
+                  <Icon name="file" size={22} />
+                </span>
+                <span className="cx-deck__title">קבצי התוכנית</span>
+                <span className="cx-deck__count">{p.files.length} קבצים</span>
+              </Link>
+            </div>
+          }
+        />
+        <p className="cx-map__hint">
+          <Icon name="lock" size={14} /> שלב נפתח אחרי שמסיימים את כל המשימות בשלב שלפניו. לחצו על משבצת כדי לפתוח משימה.
+        </p>
+      </section>
+
       <aside className="cx-map__panel">
         <section className="cx-card cx-hello">
           <p className="cx-eyebrow">{p.title}</p>
-          <h1>Hi {me.name.split(' ')[0]}!</h1>
+          <h1>היי {me.name.split(' ')[0]}!</h1>
           <div className="cx-hello__progress">
             <ProgressRing percent={percent} />
             <div>
               <strong>
-                {p.summary.completed} of {p.summary.total} tasks
+                {p.summary.completed} מתוך {p.summary.total} משימות
               </strong>
-              <span>completed so far</span>
+              <span>הושלמו עד עכשיו</span>
             </div>
           </div>
         </section>
 
-        <section className="cx-card cx-current">
-          {p.level.finished ? (
-            <>
-              <span className="cx-current__badge cx-current__badge--gold">
-                <Icon name="trophy" size={16} /> Plan complete
-              </span>
-              <h2>You did it!</h2>
-              <p>You finished every level of the plan. Amazing work.</p>
-            </>
-          ) : current ? (
-            <>
-              <span className="cx-current__badge">
-                Level {p.level.index + 1} of {p.level.total}
-              </span>
+        {p.level.finished ? (
+          <section className="cx-card cx-current" style={{ '--group': 'var(--gold)' } as CSSProperties}>
+            <header className="cx-current__band">
+              <Icon name="trophy" size={18} /> התוכנית הושלמה
+            </header>
+            <div className="cx-current__body">
+              <h2>עשיתם את זה!</h2>
+              <p>סיימתם את כל השלבים בתוכנית. עבודה מדהימה.</p>
+            </div>
+          </section>
+        ) : current ? (
+          <section className="cx-card cx-current" style={{ '--group': groupColor(p.level.index) } as CSSProperties}>
+            <header className="cx-current__band">
+              שלב {p.level.index + 1} מתוך {p.level.total}
+            </header>
+            <div className="cx-current__body">
               <h2>{current.title}</h2>
-              <p>
-                {current.completedCount} of {current.tasks.length} tasks completed
+              <p className="cx-current__count">
+                {current.completedCount} מתוך {current.tasks.length} משימות בוצעו
               </p>
-              <button type="button" className="btn btn--game btn--lg btn--block" onClick={() => navigate(`/level/${current.id}`)}>
-                <Icon name="play" size={18} /> Enter level
+              {nextTask && (
+                <div className="cx-current__task">
+                  <span className="cx-current__label">המשימה הבאה</span>
+                  <strong>{nextTask.title}</strong>
+                  {nextDue && <span className={`cx-due cx-due--${nextDue.tone}`}>{nextDue.label}</span>}
+                </div>
+              )}
+              <button
+                type="button"
+                className="btn btn--game btn--lg btn--block"
+                onClick={() => navigate(nextTask ? `/level/${current.id}/task/${nextTask.id}` : `/level/${current.id}`)}
+              >
+                <Icon name="dice" size={20} /> {nextTask ? 'התור שלי: למשימה הבאה' : 'כניסה לשלב'}
               </button>
-            </>
-          ) : (
-            <p>This plan has no levels yet.</p>
-          )}
-        </section>
+              <Link to={`/level/${current.id}`} className="cx-current__all">
+                לכל המשימות בשלב
+              </Link>
+            </div>
+          </section>
+        ) : (
+          <section className="cx-card">
+            <p>בתוכנית הזו עדיין אין שלבים.</p>
+          </section>
+        )}
 
         {upcoming.length > 0 && (
           <section className="cx-card">
-            <h3 className="cx-card__title">Coming up</h3>
+            <h3 className="cx-card__title">
+              <Icon name="clock" size={18} /> מועדים קרובים
+            </h3>
             <ul className="cx-upcoming">
               {upcoming.map(({ task, chapter }) => {
                 const due = dueInfo(task.dueAt, task.completed)
@@ -114,7 +173,7 @@ function PlanMap() {
                   <li key={task.id}>
                     <Link to={`/level/${chapter.id}/task/${task.id}`}>
                       <span className="cx-upcoming__title">{task.title}</span>
-                      <span className={`cx-due cx-due--${due?.tone ?? 'muted'}`}>{due?.label ?? 'No due time'}</span>
+                      <span className={`cx-due cx-due--${due?.tone ?? 'muted'}`}>{due?.label}</span>
                     </Link>
                   </li>
                 )
@@ -122,37 +181,7 @@ function PlanMap() {
             </ul>
           </section>
         )}
-
-        {(p.videos.length > 0 || p.files.length > 0) && (
-          <Link to="/library" className="cx-card cx-library-link">
-            <span className="cx-library-link__icon">
-              <Icon name="video" size={22} />
-            </span>
-            <span>
-              <strong>Guidance library</strong>
-              <span>
-                {p.videos.length} video{p.videos.length === 1 ? '' : 's'} · {p.files.length} file
-                {p.files.length === 1 ? '' : 's'}
-              </span>
-            </span>
-            <Icon name="chevronRight" size={18} />
-          </Link>
-        )}
       </aside>
-
-      <section className="cx-map__board" aria-label="Your map">
-        <GameMap
-          levels={levels}
-          player={{ id: me.id, name: me.name, avatarUrl: me.avatarUrl, levelIndex: p.level.index }}
-          animateFrom={lastSeen}
-          onArrive={save}
-          autoScroll
-          onSelectLevel={(i) => navigate(`/level/${p.chapters[i]!.id}`)}
-        />
-        <p className="cx-map__hint">
-          Locked levels open when you complete the tasks of the level before them.
-        </p>
-      </section>
     </div>
   )
 }
@@ -161,25 +190,19 @@ function ProgressRing({ percent }: { percent: number }) {
   const r = 26
   const c = 2 * Math.PI * r
   return (
-    <svg className="cx-ring" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label={`${percent}% complete`}>
-      <defs>
-        <linearGradient id="cx-ring-gradient" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#ffd56b" />
-          <stop offset="100%" stopColor="#ff6b4a" />
-        </linearGradient>
-      </defs>
-      <circle cx="32" cy="32" r={r} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="7" />
+    <svg className="cx-ring" viewBox="0 0 64 64" width="68" height="68" role="img" aria-label={`${percent}% הושלמו`}>
+      <circle cx="32" cy="32" r={r} fill="#fff" stroke="var(--ink)" strokeWidth="11" />
+      <circle cx="32" cy="32" r={r} fill="none" stroke="var(--paper-3)" strokeWidth="7" />
       <circle
         cx="32"
         cy="32"
         r={r}
         fill="none"
-        stroke="url(#cx-ring-gradient)"
+        stroke="var(--gold)"
         strokeWidth="7"
-        strokeLinecap="round"
         strokeDasharray={c}
         strokeDashoffset={c * (1 - percent / 100)}
-        transform="rotate(-90 32 32)"
+        transform="translate(64 0) scale(-1 1) rotate(-90 32 32)"
       />
       <text x="32" y="32" dy="0.35em" textAnchor="middle" className="cx-ring__text">
         {percent}%

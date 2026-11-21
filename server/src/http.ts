@@ -1,6 +1,9 @@
 import type { Request, Response } from 'express'
 import { rateLimit } from 'express-rate-limit'
-import type { z } from 'zod'
+import { z } from 'zod'
+
+// Default validation messages in Hebrew (the whole site is in Hebrew).
+z.config(z.locales.he())
 
 /**
  * Validates req.body against a schema.
@@ -14,7 +17,7 @@ export function parseBody<T extends z.ZodType>(schema: T, req: Request, res: Res
     const field = issue.path.join('.') || '_'
     fields[field] ??= issue.message
   }
-  res.status(400).json({ error: result.error.issues[0]?.message ?? 'Invalid request', fields })
+  res.status(400).json({ error: result.error.issues[0]?.message ?? 'בקשה לא תקינה', fields })
   return null
 }
 
@@ -26,6 +29,6 @@ export function loginRateLimit() {
     skipSuccessfulRequests: true,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
-    message: { error: 'Too many login attempts. Try again in 15 minutes.' },
+    message: { error: 'יותר מדי ניסיונות התחברות. נסו שוב בעוד 15 דקות.' },
   })
 }

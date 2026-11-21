@@ -2,9 +2,9 @@ import type { TaskStatus } from '../lib/types'
 import { Icon } from './Icon'
 
 const OPTIONS: { value: TaskStatus; label: string }[] = [
-  { value: 'not_started', label: 'Not started' },
-  { value: 'started', label: 'In progress' },
-  { value: 'completed', label: 'Completed' },
+  { value: 'not_started', label: 'לא התחלתי' },
+  { value: 'started', label: 'בתהליך' },
+  { value: 'completed', label: 'בוצע' },
 ]
 
 type Props = {
@@ -17,7 +17,7 @@ type Props = {
 /** Three-way switch for a task's status. */
 export function TaskStatusControl({ value, onChange, disabled, size = 'md' }: Props) {
   return (
-    <div className={`status-switch status-switch--${size}`} role="radiogroup" aria-label="Task status">
+    <div className={`status-switch status-switch--${size}`} role="radiogroup" aria-label="סטטוס המשימה">
       {OPTIONS.map((option) => (
         <button
           key={option.value}

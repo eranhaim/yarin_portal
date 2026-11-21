@@ -15,30 +15,30 @@ export const customersRouter = Router()
 const phone = z
   .string()
   .trim()
-  .max(40, 'Phone number is too long')
-  .regex(/^[+\d\s().-]*$/, 'Phone number can contain only digits, spaces and + - ( )')
+  .max(40, 'מספר הטלפון ארוך מדי')
+  .regex(/^[+\d\s().-]*$/, 'מספר טלפון יכול לכלול רק ספרות, רווחים ו- + - ( )')
 
-const password = z.string().min(8, 'Password must be at least 8 characters').max(200)
+const password = z.string().min(8, 'הסיסמה צריכה לכלול לפחות 8 תווים').max(200)
 
 const customerFields = {
-  name: z.string().trim().min(1, 'Name is required').max(120, 'Name is too long'),
-  email: z.string().trim().toLowerCase().pipe(z.email('Enter a valid email address')),
+  name: z.string().trim().min(1, 'חובה למלא שם').max(120, 'השם ארוך מדי'),
+  email: z.string().trim().toLowerCase().pipe(z.email('הזינו כתובת אימייל תקינה')),
   phone: phone.optional(),
-  company: z.string().trim().max(120, 'Business name is too long').optional(),
-  notes: z.string().trim().max(2000, 'Notes are too long').optional(),
+  company: z.string().trim().max(120, 'שם העסק ארוך מדי').optional(),
+  notes: z.string().trim().max(2000, 'ההערות ארוכות מדי').optional(),
   active: z.boolean().optional(),
 }
 
 const createCustomerSchema = z.object({ ...customerFields, password })
 const updateCustomerSchema = z.object({ ...customerFields, password: password.optional() }).partial()
 
-const objectId = z.string().refine(isValidObjectId, 'Invalid id')
+const objectId = z.string().refine(isValidObjectId, 'מזהה לא תקין')
 
 // ---------- Helpers ----------
 
 async function findCustomer(id: string, res: Response): Promise<CustomerDoc | null> {
   const customer = isValidObjectId(id) ? await Customer.findById(id) : null
-  if (!customer) res.status(404).json({ error: 'Customer not found' })
+  if (!customer) res.status(404).json({ error: 'הלקוח לא נמצא' })
   return customer
 }
 
@@ -117,13 +117,13 @@ function detectImageType(data: Buffer): { mime: string; ext: string } | null {
 
 customersRouter.put('/:id/avatar', express.raw({ type: IMAGE_TYPES, limit: '5mb' }), async (req, res) => {
   if (!storageEnabled) {
-    res.status(503).json({ error: 'File storage is not configured' })
+    res.status(503).json({ error: 'אחסון הקבצים לא מוגדר' })
     return
   }
   const data: unknown = req.body
   const type = Buffer.isBuffer(data) ? detectImageType(data) : null
   if (!Buffer.isBuffer(data) || !type) {
-    res.status(415).json({ error: 'Upload a JPEG, PNG or WebP image' })
+    res.status(415).json({ error: 'העלו תמונה מסוג JPEG, PNG או WebP' })
     return
   }
   const customer = await findCustomer(req.params.id, res)
@@ -168,7 +168,7 @@ customersRouter.put('/:id/plan', async (req, res) => {
 
   const plan = body.planId ? await Plan.findById(body.planId) : null
   if (body.planId && !plan) {
-    res.status(404).json({ error: 'Plan not found' })
+    res.status(404).json({ error: 'התוכנית לא נמצאה' })
     return
   }
 
@@ -194,7 +194,7 @@ customersRouter.patch('/:id/plan/tasks/:taskId', async (req, res) => {
   if (!customer) return
   const plan = await planOf(customer)
   if (!plan || !planTaskIds(plan).has(req.params.taskId)) {
-    res.status(404).json({ error: 'Task not found in this customer’s plan' })
+    res.status(404).json({ error: 'המשימה לא נמצאה בתוכנית של הלקוח' })
     return
   }
 

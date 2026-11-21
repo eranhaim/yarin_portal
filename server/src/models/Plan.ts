@@ -67,8 +67,19 @@ export function levelState(plan: PlanDoc, progress: TaskProgress[]) {
   const firstOpen = chapters.findIndex((c) => c.completed < c.total)
   const index = firstOpen === -1 ? chapters.length : firstOpen
   const states: ChapterState[] = chapters.map((_, i) => (i < index ? 'completed' : i === index ? 'current' : 'locked'))
+  // position = the customer's square on the board: the index (in plan order, over all tasks) of the
+  // first open task of the current chapter. It equals the number of tasks when the plan is finished.
+  let position = 0
+  plan.chapters.forEach((chapter, i) => {
+    if (i < index) position += chapter.tasks.length
+    else if (i === index) {
+      const open = chapter.tasks.findIndex((task) => !done.has(task._id.toString()))
+      position += open === -1 ? chapter.tasks.length : open
+    }
+  })
   return {
     index,
+    position,
     total: chapters.length,
     finished: chapters.length > 0 && index >= chapters.length,
     title: chapters[index]?.title ?? null,
@@ -106,7 +117,7 @@ export function toPlanProgressView(plan: PlanDoc, assignedAt: Date | null | unde
     ...view,
     assignedAt: assignedAt ?? null,
     summary: progressSummary(plan, progress),
-    level: { index: level.index, total: level.total, finished: level.finished, title: level.title },
+    level: { index: level.index, position: level.position, total: level.total, finished: level.finished, title: level.title },
     chapters: view.chapters.map((chapter, i) => ({
       ...chapter,
       state: level.chapters[i]!.state,

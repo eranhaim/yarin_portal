@@ -176,11 +176,40 @@ const PATHS = {
   arrowUp: <path d="M12 19V5M6 11l6-6 6 6" />,
   arrowDown: <path d="M12 5v14M18 13l-6 6-6-6" />,
   gauge: <path d="M12 14l4-4M3.3 19a10 10 0 1 1 17.4 0" />,
+  dice: (
+    <>
+      <rect x="3.5" y="3.5" width="17" height="17" rx="4" />
+      <path d="M8.5 8.5h.01M15.5 15.5h.01M12 12h.01M15.5 8.5h.01M8.5 15.5h.01" strokeWidth={3} />
+    </>
+  ),
+  coffee: (
+    <>
+      <path d="M4 9h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9zM16 10h1.5a2.5 2.5 0 0 1 0 5H16" />
+      <path d="M8 2.5c-.6 1 .6 2-.2 3M12 2.5c-.6 1 .6 2-.2 3" />
+    </>
+  ),
+  chart: <path d="M4 20V10M10 20V4M16 20v-7M21 20H3" />,
+  bulb: (
+    <>
+      <path d="M9 18h6M10 21h4" />
+      <path d="M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z" />
+    </>
+  ),
+  cards: (
+    <>
+      <rect x="8" y="3" width="12" height="16" rx="2" />
+      <path d="M5.5 6.5 4 7a2 2 0 0 0-1.3 2.5l3.4 10a2 2 0 0 0 2.5 1.3l4.4-1.5" />
+    </>
+  ),
+  home: <path d="M4 11 12 4l8 7M6 9.5V20h12V9.5M10 20v-5h4v5" />,
 } satisfies Record<string, ReactNode>
 
 export type IconName = keyof typeof PATHS
 
 const FILLED: ReadonlySet<IconName> = new Set<IconName>(['play', 'pause', 'star'])
+
+/** Icons that show a direction. The site is RTL, so they are mirrored ("forward" points left). */
+const DIRECTIONAL: ReadonlySet<IconName> = new Set<IconName>(['chevronLeft', 'chevronRight', 'arrowLeft', 'logout'])
 
 type Props = {
   name: IconName
@@ -202,7 +231,7 @@ export function Icon({ name, size = 20, className, title, x, y }: Props) {
       height={size}
       x={x}
       y={y}
-      className={className}
+      className={DIRECTIONAL.has(name) ? `icon--flip${className ? ` ${className}` : ''}` : className}
       fill={filled ? 'currentColor' : 'none'}
       stroke={filled ? 'none' : 'currentColor'}
       strokeWidth={2}

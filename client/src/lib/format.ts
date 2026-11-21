@@ -1,6 +1,5 @@
-// The interface is in English, so dates are too (day-month order, 24-hour clock).
-// Change to 'he-IL' if the site switches to Hebrew.
-export const LOCALE = 'en-GB'
+// The site is in Hebrew, so dates are too (day-month order, 24-hour clock).
+export const LOCALE = 'he-IL'
 
 const dateTime = new Intl.DateTimeFormat(LOCALE, {
   weekday: 'short',
@@ -21,17 +20,17 @@ export function formatDate(iso: string | null): string {
 
 export type DueInfo = { label: string; tone: 'danger' | 'warn' | 'ok' | 'muted' }
 
-/** A short label for a due time, for example "Overdue" or "Due in 3 days". */
+/** A short label for a due time, for example "באיחור" or "עוד 3 ימים". */
 export function dueInfo(iso: string | null, completed: boolean): DueInfo | null {
   if (!iso) return null
   const due = new Date(iso).getTime()
   const now = Date.now()
   const days = Math.round((due - now) / 86_400_000)
-  if (completed) return { label: `Due ${formatDateTime(iso)}`, tone: 'muted' }
-  if (due < now) return { label: `Overdue · ${formatDateTime(iso)}`, tone: 'danger' }
-  if (due - now < 86_400_000) return { label: `Due today · ${formatDateTime(iso)}`, tone: 'warn' }
-  if (days <= 3) return { label: `Due in ${days} day${days === 1 ? '' : 's'}`, tone: 'warn' }
-  return { label: `Due ${formatDateTime(iso)}`, tone: 'ok' }
+  if (completed) return { label: `יעד: ${formatDateTime(iso)}`, tone: 'muted' }
+  if (due < now) return { label: `באיחור · ${formatDateTime(iso)}`, tone: 'danger' }
+  if (due - now < 86_400_000) return { label: `להיום · ${formatDateTime(iso)}`, tone: 'warn' }
+  if (days <= 3) return { label: days === 1 ? 'עד מחר' : `עוד ${days} ימים`, tone: 'warn' }
+  return { label: `יעד: ${formatDateTime(iso)}`, tone: 'ok' }
 }
 
 export function formatBytes(bytes: number): string {
