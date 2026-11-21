@@ -4,6 +4,7 @@ import { Board, type BoardChapter } from '../../components/Board'
 import { groupColor } from '../../lib/groups'
 import { Icon } from '../../components/Icon'
 import { dueInfo } from '../../lib/format'
+import { lessonVideos } from '../../lib/types'
 import { useCustomer } from './customerContext'
 import { NoPlan } from './NoPlan'
 
@@ -84,7 +85,7 @@ function PlanBoard() {
                   <Icon name="video" size={22} />
                 </span>
                 <span className="cx-deck__title">ספריית הסרטונים</span>
-                <span className="cx-deck__count">{p.videos.length} סרטונים</span>
+                <span className="cx-deck__count">{p.videos.length + lessonVideos(p).length} סרטונים</span>
               </Link>
               <Link to="/library" className="cx-deck cx-deck--files">
                 <span className="cx-deck__icon">

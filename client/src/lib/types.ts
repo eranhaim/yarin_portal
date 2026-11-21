@@ -102,6 +102,11 @@ export type AdminStatus = {
   plans: number
 }
 
+/** The recorded lessons of all open levels, in plan order (locked levels send no media). */
+export function lessonVideos(plan: MyPlan): Asset[] {
+  return plan.chapters.filter((c) => c.state !== 'locked').flatMap((c) => c.tasks.flatMap((t) => t.videos))
+}
+
 export function taskStatus(task: { started: boolean; completed: boolean }): TaskStatus {
   return task.completed ? 'completed' : task.started ? 'started' : 'not_started'
 }
