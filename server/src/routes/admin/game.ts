@@ -148,7 +148,12 @@ adminGameRouter.patch('/leads/:id', async (req, res) => {
   lead.status = body.status
   await lead.save()
   // A friend who joined pays the referrer; changing it back takes the points back.
+  // (A deleted referrer gets nothing: their game data is gone.)
   const refKey = `referral:${lead.id as string}`
+  if (!(await Customer.exists({ _id: lead.referrerId }))) {
+    res.json({ ok: true })
+    return
+  }
   if (body.status === 'joined') {
     await award(lead.referrerId, { skill: 'sales', points: XP.referralJoined, refKey, label: `${lead.name} הצטרף/ה בזכותכם!` })
   } else {

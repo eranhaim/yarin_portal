@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { hashPassword } from '../../auth/password.ts'
 import { parseBody } from '../../http.ts'
 import { Customer, setTaskStatus, toAdminView, type CustomerDoc } from '../../models/Customer.ts'
+import { deleteGameData } from '../../models/Game.ts'
 import { Plan, planTaskIds, toPlanProgressView, type PlanDoc } from '../../models/Plan.ts'
 import { deleteSubmissions, Submission } from '../../models/Submission.ts'
 import { detectImageType, IMAGE_TYPES } from '../../images.ts'
@@ -96,8 +97,9 @@ customersRouter.delete('/:id', async (req, res) => {
   const { avatarKey } = customer
   await customer.deleteOne()
   if (avatarKey) await deleteObject(avatarKey).catch((err) => console.warn('Could not delete avatar', err))
-  // The customer's homework goes with them.
+  // The customer's homework and game data go with them.
   await deleteSubmissions(await Submission.find({ customerId: customer._id }))
+  await deleteGameData(customer._id)
   res.json({ ok: true })
 })
 

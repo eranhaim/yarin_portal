@@ -1,4 +1,4 @@
-import { model, Schema, type HydratedDocument, type InferSchemaType } from 'mongoose'
+import { model, Schema, type HydratedDocument, type InferSchemaType, type Types } from 'mongoose'
 
 // Collections of the game layer: points, worksheets, quizzes, AI coach chats, referrals,
 // revenue reports, prize deliveries, AI usage and site settings.
@@ -170,6 +170,23 @@ const aiUsageSchema = new Schema({
 aiUsageSchema.index({ customerId: 1, day: 1 }, { unique: true })
 
 export const AiUsage = model('AiUsage', aiUsageSchema)
+
+/**
+ * Removes a deleted customer's game data. The friends they invited (leads) stay:
+ * they are possible customers for the business.
+ */
+export async function deleteGameData(customerId: Types.ObjectId): Promise<void> {
+  const filter = { customerId }
+  await Promise.all([
+    XpEvent.deleteMany(filter),
+    WorksheetResponse.deleteMany(filter),
+    QuizAttempt.deleteMany(filter),
+    CoachSession.deleteMany(filter),
+    RevenueReport.deleteMany(filter),
+    RewardDelivery.deleteMany(filter),
+    AiUsage.deleteMany(filter),
+  ])
+}
 
 // ---------- Site settings (key/value) ----------
 
