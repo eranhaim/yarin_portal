@@ -5,8 +5,9 @@ import { groupColor } from '../../lib/groups'
 import { Icon } from '../../components/Icon'
 import { api, errorMessage } from '../../lib/api'
 import { fromLocalInput, toLocalInput } from '../../lib/format'
-import type { AdminCustomer, Asset, Plan } from '../../lib/types'
+import type { AdminCustomer, Asset, Plan, Quiz, TaskContent } from '../../lib/types'
 import { MediaManager } from './MediaManager'
+import { TaskGameContent } from './TaskGameContent'
 
 // ---------- Draft model (what the form edits) ----------
 
@@ -65,6 +66,24 @@ function mergeIds(draft: Draft, plan: Plan): Draft {
       id: plan.chapters[i]?.id,
       tasks: c.tasks.map((t, j) => ({ ...t, id: plan.chapters[i]?.tasks[j]?.id })),
     })),
+  }
+}
+
+/** A saved task's game content (the admin API sends the full quiz, with the answers). */
+function contentOf(plan: Plan, taskId: string): TaskContent {
+  const task = plan.chapters.flatMap((c) => c.tasks).find((t) => t.id === taskId)
+  return {
+    skill: task?.skill ?? null,
+    worksheet: task?.worksheet ?? null,
+    quiz: (task?.quiz as Quiz | null | undefined) ?? null,
+    rubric: task?.rubric ?? [],
+  }
+}
+
+function withContent(plan: Plan, taskId: string, content: TaskContent): Plan {
+  return {
+    ...plan,
+    chapters: plan.chapters.map((c) => ({ ...c, tasks: c.tasks.map((t) => (t.id === taskId ? { ...t, ...content } : t)) })),
   }
 }
 
@@ -376,6 +395,8 @@ function PlanEditor({ id }: { id: string }) {
                       const mediaReady = Boolean(task.id && savedTaskIds.has(task.id) && saved)
                       const videoCount = task.id ? mediaOf(task.id, 'video').length : 0
                       const fileCount = task.id ? mediaOf(task.id, 'file').length : 0
+                      const game = saved && task.id ? contentOf(saved, task.id) : null
+                      const hasGame = Boolean(game?.worksheet || game?.quiz)
                       return (
                         <li key={task.key} className={`adm-task${task.open ? ' is-open' : ''}`}>
                           <div className="adm-task__row">
@@ -406,6 +427,11 @@ function PlanEditor({ id }: { id: string }) {
                             >
                               <Icon name="video" size={14} /> {videoCount}
                               <Icon name="file" size={14} /> {fileCount}
+                              {hasGame && (
+                                <span className="adm-task__game" title="יש מסך עבודה או חידון">
+                                  <Icon name="sparkles" size={14} />
+                                </span>
+                              )}
                               <Icon name={task.open ? 'chevronUp' : 'chevronDown'} size={14} />
                             </button>
                             <div className="adm-task__tools">
@@ -450,6 +476,14 @@ function PlanEditor({ id }: { id: string }) {
                                 placeholder="הנחיות ללקוח (לא חובה)"
                                 aria-label="תיאור המשימה"
                               />
+                              {mediaReady && saved && (
+                                <TaskGameContent
+                                  planId={saved.id}
+                                  taskId={task.id!}
+                                  content={contentOf(saved, task.id!)}
+                                  onSaved={(content) => setSaved((p) => (p ? withContent(p, task.id!, content) : p))}
+                                />
+                              )}
                               {mediaReady && saved ? (
                                 <div className="adm-task__media">
                                   <div>

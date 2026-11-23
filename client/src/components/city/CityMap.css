@@ -1,0 +1,217 @@
+/* ==========================================================================
+   The city map: a sunset sky behind a transparent 3D canvas, and HTML labels
+   that the scene moves to their 3D anchors.
+   ========================================================================== */
+
+.city {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  overflow: hidden;
+  isolation: isolate;
+  touch-action: none;
+}
+
+.city canvas {
+  display: block;
+}
+
+.city__sky {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, #1a0b3d 0%, #4b1670 28%, #b8336a 52%, #ff7a4d 70%, #ffc46b 82%, #4b1670 100%);
+}
+
+.city__sun {
+  position: absolute;
+  top: 34%;
+  left: 18%;
+  width: 22vmin;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: repeating-linear-gradient(180deg, #ffe08a 0 9%, transparent 9% 12%), radial-gradient(circle, #ffd56b, #ff7a4d);
+  mask-image: linear-gradient(180deg, #000 55%, transparent 90%);
+  opacity: 0.75;
+  filter: blur(0.4px);
+}
+
+.city__loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-family: var(--font-gta);
+  font-size: 2rem;
+  letter-spacing: 0.02em;
+  text-shadow: 3px 3px 0 #000;
+  animation: pulse-text 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse-text {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.city__fallback {
+  padding: 16px;
+}
+
+/* ---------- Labels ---------- */
+
+.city__labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.city__labels > * {
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* Hidden until the scene places it (CityScene sets the opacity every frame). */
+  opacity: 0;
+  transform-origin: 50% 100%;
+  transition: opacity 0.25s ease;
+  will-change: transform;
+}
+
+.city__district {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 14px 6px;
+  border: 2px solid #000;
+  border-bottom: 5px solid var(--c);
+  background: rgba(10, 6, 24, 0.82);
+  color: #fff;
+  font-family: var(--font-gta);
+  font-size: 1.45rem;
+  line-height: 1;
+  white-space: nowrap;
+  text-shadow: 2px 2px 0 #000;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+}
+
+.city__district small {
+  color: var(--c);
+  font-size: 0.95rem;
+}
+
+.city__district.is-locked {
+  filter: grayscale(0.9);
+  opacity: 0.6;
+}
+
+.city__district svg {
+  margin-top: 2px;
+}
+
+.city__mission {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 190px;
+  padding: 3px 10px 3px 4px;
+  border: 2px solid #000;
+  border-radius: 999px;
+  background: rgba(10, 6, 24, 0.86);
+  color: #fff;
+  font: 600 0.78rem/1.2 var(--font-ui);
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 3px 0 #000;
+}
+
+.city__mission span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.city__mission b {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #4fb3ff;
+  color: #000;
+  font-family: var(--font-gta);
+  font-size: 1rem;
+}
+
+.city__mission:hover {
+  background: #000;
+}
+
+.city__mission--current {
+  border-color: #ffd84d;
+  font-size: 0.9rem;
+  box-shadow:
+    0 0 0 3px rgba(255, 216, 77, 0.35),
+    0 3px 0 #000;
+  animation: mission-bounce 1.4s ease-in-out infinite;
+}
+
+.city__mission--current b {
+  background: #ffd84d;
+}
+
+.city__mission--done b {
+  background: #43e97b;
+}
+
+.city__mission--done span {
+  opacity: 0.7;
+}
+
+.city__mission--locked {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.city__mission--locked b {
+  background: #5c5670;
+  color: #fff;
+}
+
+@keyframes mission-bounce {
+  50% {
+    margin-top: -6px;
+  }
+}
+
+.city__hq,
+.city__finish {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 12px;
+  border: 2px solid #000;
+  background: #ffd84d;
+  color: #000;
+  font-family: var(--font-gta);
+  font-size: 1.3rem;
+  white-space: nowrap;
+  box-shadow: 3px 3px 0 #000;
+}
+
+.city__finish {
+  background: linear-gradient(90deg, #ffd84d, #ff9d2e);
+}
+
+@media (max-width: 640px) {
+  .city__district {
+    font-size: 1.1rem;
+  }
+
+  .city__mission:not(.city__mission--current) span {
+    display: none;
+  }
+}

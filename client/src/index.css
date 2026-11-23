@@ -8,6 +8,8 @@
 :root {
   --font-ui: 'Rubik Variable', system-ui, 'Segoe UI', Arial, sans-serif;
   --font-display: 'Suez One', 'Rubik Variable', serif;
+  /* Poster-style condensed Hebrew, for the game's big titles and HUD numbers. */
+  --font-gta: 'Karantina', 'Suez One', 'Rubik Variable', sans-serif;
 
   /* Ink and paper */
   --ink: #1f1a17;

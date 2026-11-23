@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Navigate, NavLink, Route, Routes } from 'react-router'
 import { Icon } from '../../components/Icon'
 import { Logo } from '../../components/Logo'
@@ -7,8 +7,10 @@ import type { AdminIdentity, AdminStatus } from '../../lib/types'
 import { AdminsPage } from './AdminsPage'
 import { CustomerDetailPage } from './CustomerDetailPage'
 import { CustomersPage } from './CustomersPage'
+import { HostsPage } from './HostsPage'
 import { InboxContext, useInboxPolling } from './inbox'
 import { InboxPage } from './InboxPage'
+import { LeadsPage } from './LeadsPage'
 import { PlanEditorPage } from './PlanEditorPage'
 import { PlansPage } from './PlansPage'
 import './admin.css'
@@ -122,12 +124,23 @@ function AdminShell({ me, onLogout }: { me: AdminIdentity; onLogout: () => void 
   const [status, setStatus] = useState<AdminStatus | null>(null)
   const inbox = useInboxPolling()
   const unread = inbox.summary.unread
+  const [newLeads, setNewLeads] = useState(0)
+
+  const loadLeads = useCallback(() => {
+    api<{ new: number }>('/admin/leads/summary')
+      .then((res) => setNewLeads(res.new))
+      .catch(() => undefined)
+  }, [])
 
   useEffect(() => {
     api<AdminStatus>('/admin/status')
       .then(setStatus)
       .catch(() => undefined)
-  }, [])
+    loadLeads()
+    // New friends arrive from the public invite page; check now and then.
+    const timer = setInterval(loadLeads, 120_000)
+    return () => clearInterval(timer)
+  }, [loadLeads])
 
   const logout = async () => {
     await api('/admin/logout', { method: 'POST' }).catch(() => undefined)
@@ -150,6 +163,13 @@ function AdminShell({ me, onLogout }: { me: AdminIdentity; onLogout: () => void 
             </NavLink>
             <NavLink to="/admin/plans" className="adm-top__link">
               <Icon name="layers" size={18} /> תוכניות
+            </NavLink>
+            <NavLink to="/admin/leads" className="adm-top__link adm-top__inbox" aria-label={newLeads > 0 ? `חבר מביא חבר, ${newLeads} חדשים` : 'חבר מביא חבר'}>
+              <Icon name="star" size={18} /> חבר מביא חבר
+              {newLeads > 0 && <span className="adm-top__badge">{newLeads > 99 ? '99+' : newLeads}</span>}
+            </NavLink>
+            <NavLink to="/admin/hosts" className="adm-top__link">
+              <Icon name="sparkles" size={18} /> דמויות
             </NavLink>
             <NavLink to="/admin/admins" className="adm-top__link">
               <Icon name="briefcase" size={18} /> מנהלים
@@ -195,6 +215,8 @@ function AdminShell({ me, onLogout }: { me: AdminIdentity; onLogout: () => void 
             <Route path="plans" element={<PlansPage />} />
             <Route path="plans/:id" element={<PlanEditorPage />} />
             <Route path="inbox" element={<InboxPage />} />
+            <Route path="leads" element={<LeadsPage onChange={loadLeads} />} />
+            <Route path="hosts" element={<HostsPage />} />
             <Route path="admins" element={<AdminsPage me={me} />} />
             <Route path="*" element={<Navigate to="customers" replace />} />
           </Routes>

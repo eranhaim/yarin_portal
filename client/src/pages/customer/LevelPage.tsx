@@ -1,18 +1,18 @@
 import { useState, type CSSProperties } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import { groupColor } from '../../lib/groups'
 import { Icon } from '../../components/Icon'
 import { Mascot } from '../../components/mascot/Mascot'
 import { StatusPill } from '../../components/TaskStatusControl'
 import { errorMessage } from '../../lib/api'
 import { dueInfo } from '../../lib/format'
+import { DISTRICT_COLORS, missionLabel } from '../../lib/game'
 import { taskStatus, type MyTask } from '../../lib/types'
 import { useCustomer } from './customerContext'
 import { NoPlan } from './NoPlan'
 
 export function LevelPage() {
   const { chapterId } = useParams()
-  const { me, plan, updateTask } = useCustomer()
+  const { me, plan, updateTask, look } = useCustomer()
   const navigate = useNavigate()
   const [busyTask, setBusyTask] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -26,7 +26,7 @@ export function LevelPage() {
       <div className="cx-empty">
         <h2>השלב לא נמצא</h2>
         <Link to="/map" className="btn btn--light">
-          חזרה ללוח
+          חזרה לעיר
         </Link>
       </div>
     )
@@ -41,7 +41,7 @@ export function LevelPage() {
         <h2>שלב {index + 1} עדיין נעול</h2>
         <p>סיימו את המשימות בשלב שלפניו כדי לפתוח אותו.</p>
         <Link to="/map" className="btn btn--light">
-          חזרה ללוח
+          חזרה לעיר
         </Link>
       </div>
     )
@@ -63,13 +63,13 @@ export function LevelPage() {
   }
 
   return (
-    <div className="cx-level" style={{ '--group': groupColor(index) } as CSSProperties}>
+    <div className="cx-level" style={{ '--group': DISTRICT_COLORS[index % DISTRICT_COLORS.length], '--c': DISTRICT_COLORS[index % DISTRICT_COLORS.length] } as CSSProperties}>
       <Link to="/map" className="cx-back">
-        <Icon name="arrowLeft" size={18} /> חזרה ללוח
+        <Icon name="arrowLeft" size={18} /> חזרה לעיר
       </Link>
 
       <header className="cx-deed cx-level__hero">
-        <Mascot className="cx-level__mascot" pose={chapter.state === 'completed' ? 'cheer' : 'wave'} />
+        <Mascot className="cx-level__mascot" look={look} pose={chapter.state === 'completed' ? 'cheer' : 'wave'} base={false} />
         <div className="cx-deed__band">
           <span className="cx-deed__eyebrow">
             שלב {index + 1} מתוך {plan.chapters.length}
@@ -119,9 +119,9 @@ export function LevelPage() {
             return (
               <li key={task.id} className={`cx-task cx-task--${status}`} style={{ '--i': i } as CSSProperties}>
                 <Link to={`/level/${chapter.id}/task/${task.id}`} className="cx-task__link">
-                  <span className="cx-task__number">{task.completed ? <Icon name="check" size={18} /> : i + 1}</span>
+                  <span className="cx-task__number">{task.completed ? <Icon name="check" size={18} /> : missionLabel(task.title, i + 1).badge}</span>
                   <span className="cx-task__body">
-                    <span className="cx-task__title">{task.title}</span>
+                    <span className="cx-task__title">{missionLabel(task.title, i + 1).label}</span>
                     <span className="cx-task__meta">
                       {due && <span className={`cx-due cx-due--${due.tone}`}>{due.label}</span>}
                       {task.videoCount > 0 && (
@@ -132,6 +132,16 @@ export function LevelPage() {
                       {task.fileCount > 0 && (
                         <span className="cx-task__media">
                           <Icon name="file" size={14} /> {task.fileCount}
+                        </span>
+                      )}
+                      {task.worksheetState?.score != null && (
+                        <span className="cx-task__media cx-task__media--score">
+                          <Icon name="sparkles" size={14} /> הבוחן: {task.worksheetState.score}
+                        </span>
+                      )}
+                      {task.quizBest && (
+                        <span className="cx-task__media">
+                          <Icon name="bulb" size={14} /> חידון {task.quizBest.correct}/{task.quizBest.total}
                         </span>
                       )}
                       {task.submissions.length > 0 && (

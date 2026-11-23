@@ -26,6 +26,11 @@ const customerSchema = new Schema(
     active: { type: Boolean, default: true },
     lastLoginAt: { type: Date, default: null },
 
+    // The customer's game character (see game/content.ts, lookSchema). null = the default look.
+    look: { type: Schema.Types.Mixed, default: null },
+    // Code in the customer's "bring a friend" link.
+    referralCode: { type: String, default: null, index: { unique: true, sparse: true } },
+
     planId: { type: Schema.Types.ObjectId, ref: 'Plan', default: null, index: true },
     planAssignedAt: { type: Date, default: null },
     taskProgress: { type: [taskProgressSchema], default: [] },

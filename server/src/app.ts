@@ -5,7 +5,8 @@ import { isProduction } from './env.ts'
 import { adminRouter } from './routes/admin/index.ts'
 import { authRouter } from './routes/auth.ts'
 import { healthRouter } from './routes/health.ts'
-import { meRouter } from './routes/me.ts'
+import { meRouter } from './routes/me/index.ts'
+import { publicRouter } from './routes/public.ts'
 
 export const app = express()
 
@@ -22,6 +23,7 @@ app.use('/api/health', healthRouter)
 app.use('/api/auth', authRouter)
 app.use('/api/admin', adminRouter)
 app.use('/api/me', meRouter)
+app.use('/api/public', publicRouter)
 
 app.use('/api', (_req, res) => {
   res.status(404).json({ error: 'לא נמצא' })

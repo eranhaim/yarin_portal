@@ -1,4 +1,6 @@
 import { model, Schema, type HydratedDocument, type InferSchemaType } from 'mongoose'
+import type { Quiz, Worksheet } from '../game/content.ts'
+import type { SkillKey } from '../game/rules.ts'
 
 // A plan is a template: chapters that hold tasks.
 // Each customer who gets the plan has their own task progress (see Customer.taskProgress).
@@ -7,6 +9,12 @@ const taskSchema = new Schema({
   title: { type: String, required: true, trim: true, maxlength: 200 },
   description: { type: String, trim: true, maxlength: 2000, default: '' },
   dueAt: { type: Date, default: null },
+  // Game content (see game/content.ts): the skill the task trains, its in-app worksheet,
+  // the lesson quiz and the criteria the AI reviewer checks.
+  skill: { type: String, default: null },
+  worksheet: { type: Schema.Types.Mixed, default: null },
+  quiz: { type: Schema.Types.Mixed, default: null },
+  rubric: { type: [String], default: [] },
 })
 
 const chapterSchema = new Schema({
@@ -101,6 +109,10 @@ export function toPlanView(plan: PlanDoc) {
         title: task.title,
         description: task.description,
         dueAt: task.dueAt,
+        skill: (task.skill as SkillKey | null) ?? null,
+        worksheet: (task.worksheet as Worksheet | null) ?? null,
+        quiz: (task.quiz as Quiz | null) ?? null,
+        rubric: task.rubric ?? [],
       })),
     })),
     createdAt: plan.createdAt,

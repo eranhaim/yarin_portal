@@ -28,6 +28,10 @@ services:
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
       S3_SECRET_KEY: ${S3_SECRET_KEY:-}
       S3_BUCKET: ${S3_BUCKET:-}
+      # The AI bot (task reviews, coaches, characters from photos). Without a key these features are off.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-claude-opus-5-5}
+      AI_DAILY_LIMIT: ${AI_DAILY_LIMIT:-120}
     # No published ports: only the web container reaches the API.
 
   web:

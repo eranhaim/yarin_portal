@@ -78,6 +78,16 @@
   display: flex;
   flex: 1;
   gap: 6px;
+  min-width: 0;
+  /* Narrow screens scroll the menu sideways instead of wrapping it. */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+@media (max-width: 1300px) {
+  .adm-top__status {
+    display: none;
+  }
 }
 
 .adm-top__link {
@@ -91,6 +101,7 @@
   color: var(--ink);
   font-weight: 700;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .adm-top__link:hover {
@@ -1651,4 +1662,536 @@
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+/* ==========================================================================
+   The game (customer page section, referral leads, host characters, task content)
+   ========================================================================== */
+
+.adm-game {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.adm-game .adm-card__head {
+  margin-bottom: 0;
+}
+
+.adm-game__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 1.1rem;
+}
+
+.adm-skills {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.adm-skills li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 8px 10px;
+  border: 2px solid var(--ink);
+  border-inline-start: 6px solid var(--c);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+.adm-skills__icon {
+  display: grid;
+  grid-row: span 2;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1.5px solid var(--ink);
+  border-radius: 8px;
+  background: var(--c);
+  color: var(--ink);
+}
+
+.adm-skills__name {
+  font-weight: 700;
+}
+
+.adm-skills b {
+  font-size: 0.8rem;
+}
+
+.adm-skills__bar {
+  height: 7px;
+  border: 1.5px solid var(--ink);
+  border-radius: 99px;
+  background: var(--paper-2);
+  overflow: hidden;
+}
+
+.adm-skills__bar i {
+  display: block;
+  height: 100%;
+  background: var(--c);
+}
+
+.adm-skills small {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.adm-rewards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.adm-rewards li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  background: #fff;
+  opacity: 0.75;
+}
+
+.adm-rewards li > div {
+  display: flex;
+  flex: 1 1 160px;
+  flex-direction: column;
+}
+
+.adm-rewards small {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.adm-rewards li.is-unlocked {
+  background: var(--warning-bg);
+  opacity: 1;
+  box-shadow: 3px 3px 0 var(--gold);
+}
+
+.adm-rewards li.is-delivered {
+  background: var(--success-bg);
+  opacity: 1;
+}
+
+.adm-rewards__progress {
+  color: var(--text-muted);
+  font-weight: 800;
+}
+
+.adm-worksheets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.adm-worksheets details {
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+.adm-worksheets summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.adm-worksheets summary small {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.adm-worksheets__title {
+  flex: 1 1 220px;
+  font-weight: 700;
+}
+
+.adm-worksheets__body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 14px;
+  padding: 12px;
+  border-top: 2px dashed var(--border);
+}
+
+.adm-worksheets__body h4,
+.adm-review h4,
+.adm-transcript h4 {
+  margin-bottom: 6px;
+  font-size: 0.95rem;
+}
+
+.adm-worksheets__answers {
+  max-height: 420px;
+  margin: 0;
+  padding: 10px;
+  overflow: auto;
+  border-radius: var(--radius-sm);
+  background: var(--paper-2);
+  font: inherit;
+  font-size: 0.88rem;
+  white-space: pre-wrap;
+}
+
+.adm-review {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+
+.adm-review h5 {
+  margin-top: 4px;
+  font-size: 0.85rem;
+}
+
+.adm-review ul {
+  margin: 0;
+  padding-inline-start: 18px;
+}
+
+.adm-review__final {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--success-bg);
+}
+
+.adm-transcript {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  grid-column: 1 / -1;
+}
+
+.adm-transcript__turn {
+  max-width: 85%;
+  padding: 8px 10px;
+  border: 1.5px solid var(--ink);
+  border-radius: var(--radius);
+  background: #fff;
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+}
+
+.adm-transcript__turn b {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.adm-transcript__turn--assistant {
+  align-self: flex-end;
+  background: var(--info-bg);
+}
+
+.adm-game__split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.adm-game__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.adm-game__list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  padding: 8px 10px;
+  border: 1.5px solid var(--ink);
+  border-radius: var(--radius-sm);
+  background: #fff;
+}
+
+.adm-game__list li > span,
+.adm-game__link {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.adm-game__list small {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.adm-game__list b.is-perfect {
+  color: var(--success);
+}
+
+.adm-game__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--blue);
+  font: inherit;
+  font-weight: 700;
+  text-align: start;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ---------- Referral leads ---------- */
+
+.adm-leads__score {
+  display: grid;
+  justify-items: center;
+  padding: 8px 18px;
+  border: 2.5px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--gold);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.adm-leads__score strong {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.adm-leads__score span {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.adm-leads {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.adm-leads__item {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 170px;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 2.5px solid var(--ink);
+  border-inline-start: 8px solid var(--blue);
+  border-radius: var(--radius-lg);
+  background: var(--paper);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.adm-leads__item--new {
+  border-inline-start-color: var(--gold);
+}
+
+.adm-leads__item--joined {
+  border-inline-start-color: var(--success);
+  background: var(--success-bg);
+}
+
+.adm-leads__item--lost {
+  border-inline-start-color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.adm-leads__who,
+.adm-leads__from {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.adm-leads__who strong {
+  color: var(--ink);
+  font-size: 1.1rem;
+}
+
+.adm-leads__who > span {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.adm-leads__note {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.adm-leads__from small {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.adm-leads__from a {
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .adm-leads__item {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Host characters ---------- */
+
+.adm-hosts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.adm-host {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.adm-host__stage {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  padding-bottom: 10px;
+  border: 2.5px solid var(--ink);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, #1a0b3d 0%, #4b1670 45%, #b8336a 80%, #ff7a4d 100%);
+}
+
+.adm-host__mascot {
+  display: block;
+  width: 100%;
+  height: 300px;
+}
+
+.adm-host__stage strong {
+  padding: 2px 16px;
+  border: 2px solid #000;
+  background: #ffd84d;
+  color: #000;
+  font-family: var(--font-gta);
+  font-size: 1.8rem;
+  line-height: 1.1;
+}
+
+.adm-host__editor .look-editor {
+  --look-title: var(--ink);
+  --look-bg: #fff;
+  --look-fg: var(--ink);
+  --look-on-bg: var(--gold);
+  --look-on-fg: var(--ink);
+  --look-line: var(--ink);
+}
+
+.adm-host__editor .look-group legend {
+  font-family: var(--font-display);
+  font-size: 1rem;
+}
+
+.adm-host__editor .look-option {
+  border-radius: var(--radius-sm);
+}
+
+/* ---------- Task game content (plan editor) ---------- */
+
+.adm-task__game {
+  display: inline-grid;
+  place-items: center;
+  color: var(--g4);
+}
+
+.adm-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 2px dashed var(--g4);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--g4) 6%, #fff);
+}
+
+.adm-content__row,
+.adm-content__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.adm-content__row h4 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-inline-end: 8px;
+}
+
+.adm-content__skill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.adm-content__skill .select {
+  width: auto;
+  min-width: 160px;
+  padding-block: 4px;
+}
+
+.adm-content__preview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: #fff;
+  font-size: 0.88rem;
+}
+
+.adm-content__preview h5 {
+  margin-bottom: 6px;
+  font-size: 0.95rem;
+}
+
+.adm-content__preview ol,
+.adm-content__preview ul {
+  margin: 0;
+  padding-inline-start: 18px;
+}
+
+.adm-content__preview li {
+  margin-bottom: 4px;
+}
+
+.adm-content__preview li.is-answer {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.adm-content__preview small {
+  color: var(--text-muted);
 }

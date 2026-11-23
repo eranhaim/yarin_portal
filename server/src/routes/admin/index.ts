@@ -12,6 +12,7 @@ import { storageStatus } from '../../storage.ts'
 import { adminsRouter } from './admins.ts'
 import { assetsRouter } from './assets.ts'
 import { customersRouter } from './customers.ts'
+import { adminGameRouter } from './game.ts'
 import { plansRouter } from './plans.ts'
 import { submissionsRouter } from './submissions.ts'
 
@@ -80,3 +81,4 @@ adminRouter.use('/plans', plansRouter)
 adminRouter.use('/admins', adminsRouter)
 adminRouter.use(assetsRouter)
 adminRouter.use(submissionsRouter)
+adminRouter.use(adminGameRouter)

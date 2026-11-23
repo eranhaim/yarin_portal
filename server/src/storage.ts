@@ -57,6 +57,17 @@ export async function deleteObjects(keys: string[]): Promise<void> {
   }
 }
 
+/** Reads a whole (small) object, for example an avatar image. */
+export async function getObjectBytes(key: string): Promise<Buffer | null> {
+  try {
+    const out = await requireClient().send(new GetObjectCommand({ Bucket: bucket, Key: key }))
+    const bytes = await out.Body?.transformToByteArray()
+    return bytes ? Buffer.from(bytes) : null
+  } catch {
+    return null
+  }
+}
+
 export async function headObject(key: string): Promise<{ size: number; contentType: string | undefined } | null> {
   try {
     const out = await requireClient().send(new HeadObjectCommand({ Bucket: bucket, Key: key }))

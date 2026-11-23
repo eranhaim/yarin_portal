@@ -1,10 +1,11 @@
-import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { Die } from '../components/Board'
 import { Icon } from '../components/Icon'
 import { Logo } from '../components/Logo'
 import { Mascot } from '../components/mascot/Mascot'
 import { api, errorMessage } from '../lib/api'
+import type { Host } from '../lib/types'
 import './LoginPage.css'
 
 export function LoginPage() {
@@ -15,6 +16,13 @@ export function LoginPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [shaking, setShaking] = useState(false)
+  const [hosts, setHosts] = useState<Host[]>([])
+
+  useEffect(() => {
+    api<{ hosts: Host[] }>('/public/hosts')
+      .then((res) => setHosts(res.hosts))
+      .catch(() => undefined)
+  }, [])
 
   // Already logged in? Go straight to the board.
   useEffect(() => {
@@ -47,7 +55,7 @@ export function LoginPage() {
             <h1>
               המסע העסקי שלכם,
               <br />
-              <span>משבצת אחרי משבצת.</span>
+              <span>משימה אחרי משימה.</span>
             </h1>
             <p>התחברו כדי להמשיך בתוכנית עם ירין ואורן: שלבים ברורים, סרטוני הדרכה וכל הכלים שצריך בדרך.</p>
           </div>
@@ -56,7 +64,7 @@ export function LoginPage() {
               <span style={{ background: 'var(--g1)' }}>
                 <Icon name="map" size={18} />
               </span>
-              לוח משחק עם שלבים ומשימות
+              עיר משחק עם שלבים ומשימות
             </li>
             <li>
               <span style={{ background: 'var(--g2)' }}>
@@ -72,7 +80,16 @@ export function LoginPage() {
             </li>
           </ul>
         </div>
-        <MiniBoard />
+        {hosts.length > 0 && (
+          <div className="login__hosts">
+            <Mascot className="login__cast" cast={hosts.map((h) => ({ look: h.look, pose: 'boss', base: false }))} />
+            <div className="login__host-names" aria-hidden="true">
+              {hosts.map((h) => (
+                <span key={h.key}>{h.name}</span>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       <main className="login__main">
@@ -151,46 +168,6 @@ export function LoginPage() {
           </div>
         </form>
       </main>
-    </div>
-  )
-}
-
-/** A small board on a table, in 3D, with a token and two dice. */
-function MiniBoard() {
-  const size = 6
-  const squares: { row: number; col: number; band: string | null; corner: boolean }[] = []
-  const colors = ['var(--g1)', 'var(--g2)', 'var(--g3)', 'var(--g4)', 'var(--g5)', 'var(--g6)', 'var(--g7)', 'var(--g8)']
-  let n = 0
-  for (let row = 1; row <= size; row++) {
-    for (let col = 1; col <= size; col++) {
-      const edge = row === 1 || row === size || col === 1 || col === size
-      if (!edge) continue
-      const corner = (row === 1 || row === size) && (col === 1 || col === size)
-      squares.push({ row, col, corner, band: corner ? null : colors[Math.floor(n++ / 2.5) % colors.length]! })
-    }
-  }
-  return (
-    <div className="mini" aria-hidden="true">
-      <div className="mini__board">
-        {squares.map((s) => (
-          <span
-            key={`${s.row}-${s.col}`}
-            className={`mini__sq${s.corner ? ' mini__sq--corner' : ''}`}
-            style={{ gridRow: s.row, gridColumn: s.col, '--band': s.band ?? 'transparent' } as CSSProperties}
-          />
-        ))}
-        <span className="mini__center">
-          <span className="mini__banner">סקיל אורגני</span>
-        </span>
-        <span className="mini__token" />
-      </div>
-      <span className="mini__die mini__die--a">
-        <Die value={5} />
-      </span>
-      <span className="mini__die mini__die--b">
-        <Die value={3} />
-      </span>
-      <Mascot className="mini__mascot" pose="wave" />
     </div>
   )
 }

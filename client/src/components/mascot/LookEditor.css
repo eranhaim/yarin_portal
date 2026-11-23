@@ -1,0 +1,80 @@
+/* The character builder. The colors come from variables, so it fits the dark game pages
+   (the defaults) and the light admin pages (which set the variables). */
+
+.look-editor {
+  --look-title: #fff;
+  --look-bg: #1d1538;
+  --look-fg: #fff;
+  --look-on-bg: #2fe0b0;
+  --look-on-fg: #000;
+  --look-line: #000;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.look-group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.look-group legend {
+  margin-bottom: 6px;
+  color: var(--look-title);
+  font-family: var(--font-gta);
+  font-size: 1.4rem;
+}
+
+.look-group__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.look-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 2px solid var(--look-line);
+  background: var(--look-bg);
+  color: var(--look-fg);
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.look-option:hover {
+  transform: translateY(-2px);
+}
+
+.look-option[aria-pressed='true'] {
+  background: var(--look-on-bg);
+  color: var(--look-on-fg);
+}
+
+.look-option--swatch i {
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid #000;
+  border-radius: 50%;
+}
+
+.look-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  color: var(--look-fg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .look-option {
+    transition: none;
+  }
+
+  .look-option:hover {
+    transform: none;
+  }
+}

@@ -23,6 +23,13 @@ const schema = z.object({
   S3_ACCESS_KEY: optional(z.string()),
   S3_SECRET_KEY: optional(z.string()),
   S3_BUCKET: optional(z.string()),
+
+  // Claude API for the AI features (task reviewer, quizzes, simulators, avatar from a photo).
+  // The AI features stay off until the key is set.
+  ANTHROPIC_API_KEY: optional(z.string()),
+  AI_MODEL: z.preprocess(blankToUndefined, z.string().default('claude-opus-5-5')),
+  // Safety cap: AI requests per customer per day.
+  AI_DAILY_LIMIT: z.coerce.number().int().positive().default(120),
 })
 
 const parsed = schema.safeParse(process.env)

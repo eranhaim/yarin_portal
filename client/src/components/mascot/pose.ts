@@ -1,2 +1,2 @@
-/** What the mascot does: stand and breathe, wave hello, or jump for joy. */
-export type MascotPose = 'idle' | 'wave' | 'cheer'
+/** What a character does: stand and breathe, wave hello, jump for joy, walk, or stand like a boss. */
+export type MascotPose = 'idle' | 'wave' | 'cheer' | 'walk' | 'boss'

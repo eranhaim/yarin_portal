@@ -33,7 +33,20 @@ const planInput = z.object({
   chapters: z.array(chapterInput).max(200, 'יותר מדי שלבים').default([]),
 })
 
-function toDocument(input: z.infer<typeof planInput>) {
+type TaskContent = { skill: unknown; worksheet: unknown; quiz: unknown; rubric: unknown }
+
+/** Game content of the plan's tasks, by task id. The editor does not send it, so a save keeps it. */
+function contentById(plan: PlanDoc | null): Map<string, TaskContent> {
+  const map = new Map<string, TaskContent>()
+  for (const chapter of plan?.chapters ?? []) {
+    for (const task of chapter.tasks) {
+      map.set(task._id.toString(), { skill: task.skill, worksheet: task.worksheet, quiz: task.quiz, rubric: task.rubric })
+    }
+  }
+  return map
+}
+
+function toDocument(input: z.infer<typeof planInput>, content = new Map<string, TaskContent>()) {
   return {
     title: input.title,
     description: input.description,
@@ -46,6 +59,7 @@ function toDocument(input: z.infer<typeof planInput>) {
         title: task.title,
         description: task.description,
         dueAt: task.dueAt ? new Date(task.dueAt) : null,
+        ...(task.id ? content.get(task.id) : undefined),
       })),
     })),
   }
@@ -98,7 +112,7 @@ plansRouter.put('/:id', async (req, res) => {
   if (!body) return
   const plan = await findPlan(req.params.id, res)
   if (!plan) return
-  plan.set(toDocument(body))
+  plan.set(toDocument(body, contentById(plan)))
   await plan.save()
 
   // Remove videos and files of tasks that are no longer in the plan.

@@ -17,6 +17,7 @@ import {
   type TaskStatus,
 } from '../../lib/types'
 import { CustomerFormModal } from './CustomerFormModal'
+import { CustomerGamePanel } from './CustomerGamePanel'
 import { useInbox } from './inbox'
 import { LevelBadge } from './LevelBadge'
 
@@ -43,6 +44,10 @@ function CustomerDetail({ id }: { id: string }) {
     return map
   }, [submissions])
   const unseenIds = submissions.filter((s) => !s.seenAt).map((s) => s.id)
+  const taskTitles = useMemo(
+    () => new Map(progress?.chapters.flatMap((c) => c.tasks.map((t) => [t.id, t.title] as const)) ?? []),
+    [progress],
+  )
 
   const loadProgress = useCallback(async () => {
     const res = await api<{ plan: PlanProgress | null }>(`/admin/customers/${id}/plan`)
@@ -376,6 +381,8 @@ function CustomerDetail({ id }: { id: string }) {
               </section>
             </div>
           )}
+
+          <CustomerGamePanel customerId={customer.id} taskTitles={taskTitles} />
         </div>
       </div>
 

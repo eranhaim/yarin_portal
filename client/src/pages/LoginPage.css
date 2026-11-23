@@ -20,9 +20,9 @@
   padding: 44px 52px;
   color: #fff;
   background:
-    radial-gradient(ellipse at 70% 110%, rgba(242, 182, 50, 0.25), transparent 55%),
-    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.03) 0 2px, transparent 2px 16px),
-    linear-gradient(160deg, var(--table-1), var(--table-2));
+    radial-gradient(circle at 70% 78%, rgba(255, 196, 107, 0.9) 0 12%, transparent 30%),
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px) 0 0 / 100% 4px,
+    linear-gradient(180deg, #1a0b3d 0%, #4b1670 35%, #b8336a 62%, #ff7a4d 80%, #2a1150 100%);
   overflow: hidden;
 }
 
@@ -78,128 +78,39 @@
   box-shadow: 2px 2px 0 var(--ink);
 }
 
-/* ---------- Mini board (decoration) ---------- */
+/* ---------- Yarin and Oren, the bosses (3D) ---------- */
 
-.mini {
+.login__hosts {
   position: relative;
   align-self: center;
-  width: min(380px, 80%);
-  aspect-ratio: 1;
-  margin: -10px 0 10px;
-  perspective: 1000px;
+  width: min(460px, 92%);
+  margin-top: -10px;
 }
 
-.mini__board {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  grid-template-columns: 1.4fr repeat(4, 1fr) 1.4fr;
-  grid-template-rows: 1.4fr repeat(4, 1fr) 1.4fr;
-  gap: 2px;
-  padding: 2px;
-  border: 3px solid var(--ink);
-  border-radius: 12px;
-  background: var(--ink);
-  transform: rotateX(48deg) rotateZ(-28deg);
-  transform-style: preserve-3d;
-  box-shadow:
-    14px 14px 0 rgba(0, 0, 0, 0.35),
-    0 40px 60px rgba(0, 0, 0, 0.35);
-  animation: mini-float 6s ease-in-out infinite;
+.login__cast {
+  display: block;
+  height: 360px;
+  animation: rise-in 0.8s cubic-bezier(0.3, 1.3, 0.5, 1) 0.3s both;
 }
 
-@keyframes mini-float {
-  50% {
-    transform: rotateX(48deg) rotateZ(-24deg) translateY(-6px);
-  }
+/* Same order as the 3D scene, which runs left to right. */
+.login__host-names {
+  display: flex;
+  justify-content: space-around;
+  margin-top: -14px;
+  direction: ltr;
 }
 
-.mini__sq {
-  position: relative;
-  background: var(--paper);
-  overflow: hidden;
-}
-
-.mini__sq::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto;
-  height: 28%;
-  background: var(--band);
-}
-
-.mini__sq--corner {
-  background: var(--paper-2);
-}
-
-.mini__center {
-  grid-row: 2 / 6;
-  grid-column: 2 / 6;
-  display: grid;
-  place-items: center;
-  background: repeating-linear-gradient(135deg, var(--paper-2) 0 10px, #f7ecd2 10px 20px);
-}
-
-.mini__banner {
-  padding: 4px 14px;
-  border: 2px solid var(--ink);
-  background: var(--red);
-  color: #fff;
-  font-family: var(--font-display);
-  font-size: 1rem;
-  text-shadow: 1px 1px 0 var(--ink);
-  box-shadow: 3px 3px 0 var(--ink);
-}
-
-.mini__token {
-  position: absolute;
-  right: 6%;
-  bottom: 5%;
-  width: 11%;
-  aspect-ratio: 1;
-  border: 2.5px solid var(--ink);
-  border-radius: 50%;
-  background: var(--gold);
-  box-shadow: 0 4px 0 var(--ink);
-}
-
-.mini__die {
-  position: absolute;
-  z-index: 2;
-}
-
-.mini__die .die {
-  --die: 54px;
-}
-
-.mini__die--a {
-  bottom: -2%;
-  left: -2%;
-  transform: rotate(-16deg);
-  animation: mini-die 5s ease-in-out infinite;
-}
-
-.mini__die--b {
-  bottom: 6%;
-  left: 15%;
-  transform: rotate(12deg);
-  animation: mini-die 5s ease-in-out 0.6s infinite;
-}
-
-@keyframes mini-die {
-  50% {
-    translate: 0 -8px;
-  }
-}
-
-.mini__mascot {
-  position: absolute;
-  z-index: 3;
-  right: -6%;
-  bottom: -4%;
-  width: 46%;
-  aspect-ratio: 3 / 4;
-  animation: rise-in 0.7s cubic-bezier(0.3, 1.4, 0.5, 1) 0.4s both;
+.login__host-names span {
+  padding: 2px 14px;
+  border: 2px solid #000;
+  background: #ffd84d;
+  color: #000;
+  font-family: var(--font-gta);
+  font-size: 1.6rem;
+  font-weight: 700;
+  transform: skewX(-8deg);
+  box-shadow: 3px 3px 0 #000;
 }
 
 /* ---------- Form side ---------- */
@@ -348,4 +259,63 @@
     justify-content: center;
     margin-bottom: 4px;
   }
+}
+
+/* ---------- Night-city look for the form side ---------- */
+
+.login__main {
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(255, 79, 163, 0.22), transparent 55%),
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px) 0 0 / 100% 4px,
+    #0c0818;
+}
+
+.login__card {
+  border: 2px solid #000;
+  border-radius: 4px;
+  background: rgba(18, 12, 38, 0.95);
+  color: #e9e4ff;
+  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.6);
+}
+
+.login__card-band {
+  border-bottom: 2px solid #000;
+  background: linear-gradient(90deg, #ff4fa3, #ff9d2e);
+  color: #000;
+  font-family: var(--font-gta);
+  font-size: 1.8rem;
+  text-shadow: none;
+}
+
+.login__card h2 {
+  color: #fff;
+  font-family: var(--font-gta);
+  font-size: 2.6rem;
+}
+
+.login__sub,
+.login__help {
+  color: #a99fd0;
+}
+
+.login__card .field__label {
+  color: #fff;
+}
+
+.login__card .input {
+  border: 2px solid #000;
+  border-radius: 4px;
+  background: #110b24;
+  color: #fff;
+}
+
+.login__card .btn--game {
+  border-radius: 4px;
+  background: linear-gradient(180deg, #ffe066, #ffb22e);
+  font-family: var(--font-gta);
+  font-size: 1.6rem;
+}
+
+.login__pitch h1 span {
+  color: #ffd84d;
 }
