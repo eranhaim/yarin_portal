@@ -157,7 +157,10 @@ const REVIEWER: LabCase[] = [
     ],
     run: async () => {
       const r = await review({ worksheet: MEDIUM_AVATAR })
-      return { situation: `The task: ${AVATAR_TASK.description}\nThe criteria: ${AVATAR_TASK.rubric.join(' | ')}\n\nReview of:\n${MEDIUM_AVATAR}`, text: reviewText(r), count: r.result.improvements.length }
+      return { situation: `Known business facts (the examiner may use them):
+${BUSINESS}
+
+The task: ${AVATAR_TASK.description}\nThe criteria: ${AVATAR_TASK.rubric.join(' | ')}\n\nReview of:\n${MEDIUM_AVATAR}`, text: reviewText(r), count: r.result.improvements.length }
     },
   },
   {

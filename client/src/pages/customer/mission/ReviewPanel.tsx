@@ -51,6 +51,32 @@ export function ReviewPanel({ task, view, onWork, onFix }: Props) {
     }
   }
 
+  // The check runs on the server; this screen asks for the answer, also after the customer left and came back.
+  const following = view.reviewing
+  const latest = useRef({ onWork, completed: task.completed })
+  useEffect(() => {
+    latest.current = { onWork, completed: task.completed }
+  })
+  useEffect(() => {
+    if (!following) return
+    let stopped = false
+    const timer = window.setInterval(() => {
+      api<WorkResult>(`/me/tasks/${task.id}/review`)
+        .then((res) => {
+          if (stopped || res.view.reviewing) return
+          const done = res.plan.chapters.some((c) => c.tasks.some((t) => t.id === task.id && t.completed))
+          latest.current.onWork({ ...res, completed: done && !latest.current.completed })
+        })
+        // A lost connection is not a failed check; the next try asks again.
+        .catch(() => undefined)
+    }, 4000)
+    return () => {
+      stopped = true
+      window.clearInterval(timer)
+    }
+  }, [following, task.id])
+  const reading = following || busy === 'review'
+
   const reply = async (e: FormEvent) => {
     e.preventDefault()
     if (!message.trim()) return
@@ -69,7 +95,7 @@ export function ReviewPanel({ task, view, onWork, onFix }: Props) {
     <div className="check">
       <HumanNote view={view} />
 
-      {busy === 'review' ? (
+      {reading ? (
         <Reading />
       ) : check === 'waiting' ? (
         <section className="panel check__start">
@@ -98,7 +124,7 @@ export function ReviewPanel({ task, view, onWork, onFix }: Props) {
         <Result review={current} pass={pass} attempts={view.attempts} />
       )}
 
-      {current && check === 'fix' && busy !== 'review' && (
+      {current && check === 'fix' && !reading && (
         <section className="panel check__fix">
           <h2 className="panel__title">
             <Icon name="edit" size={18} /> מה לשפר, לפי הסדר
@@ -121,7 +147,7 @@ export function ReviewPanel({ task, view, onWork, onFix }: Props) {
         </section>
       )}
 
-      {current && view.chat.length > 0 && busy !== 'review' && (
+      {current && view.chat.length > 0 && !reading && (
         <section className="panel check__defense">
           <h2 className="panel__title">
             <Icon name="bulb" size={18} /> כמה שאלות על העבודה
@@ -170,9 +196,9 @@ export function ReviewPanel({ task, view, onWork, onFix }: Props) {
         </section>
       )}
 
-      {error && (
+      {(error ?? (!reading && view.reviewError)) && (
         <div className="alert alert--error" role="alert">
-          <Icon name="alert" size={18} /> {error}
+          <Icon name="alert" size={18} /> {error ?? view.reviewError}
         </div>
       )}
 
@@ -234,7 +260,7 @@ function Reading() {
     <section className="panel check__reading" role="status">
       <span className="spinner" />
       <strong>{READING[line]}</strong>
-      <small>בדרך כלל עד דקה. אם צירפתם סרטון, זה יכול לקחת כמה דקות.</small>
+      <small>בדרך כלל עד דקה. אם צירפתם סרטון, זה יכול לקחת כמה דקות. אפשר לצאת מהמסך ולחזור, הבדיקה ממשיכה.</small>
     </section>
   )
 }

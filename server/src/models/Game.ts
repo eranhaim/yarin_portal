@@ -95,6 +95,9 @@ const worksheetResponseSchema = new Schema(
     submittedAt: { type: Date, default: null },
     // The AI reviewer ("הבוחן"): the review of the latest version, then a short defense and a final score.
     review: { type: reviewSchema, default: null },
+    // The check runs in the background: when it started (null = not running), and why the last one failed.
+    reviewingSince: { type: Date, default: null },
+    reviewError: { type: String, default: '' },
     chat: { type: [chatTurnSchema], default: [] },
     // Every version the customer handed in for review, so they see how the work improves.
     attempts: {

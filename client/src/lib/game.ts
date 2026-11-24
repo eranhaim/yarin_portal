@@ -189,9 +189,10 @@ export const DEFAULT_LOOK: Look = {
   chain: false,
 }
 
-/** "שיעור 07 · תוכן כחלק…" -> { badge: "07", label: "תוכן כחלק…" } */
+/** "שיעור 07 · תוכן כחלק…" -> { badge: "07", label: "תוכן כחלק…" }; a task of a personal route gets a star. */
 export function missionLabel(title: string, fallbackNumber: number): { badge: string; label: string } {
   const [head, ...rest] = title.split(' · ')
+  if (rest.length > 0 && head === 'מסלול אישי') return { badge: '★', label: rest.join(' · ') }
   const digits = head?.match(/\d+/)?.[0]
   if (rest.length > 0 && digits) return { badge: digits, label: rest.join(' · ') }
   return { badge: String(fallbackNumber), label: title }

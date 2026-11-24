@@ -306,6 +306,10 @@ export type WorksheetView = {
   answers: WorksheetAnswers
   submittedAt: string | null
   review: Review | null
+  /** A check runs now, in the background. */
+  reviewing: boolean
+  /** Why the last check stopped. */
+  reviewError: string | null
   chat: ChatTurn[]
   attempts: Attempt[]
   accepted: boolean

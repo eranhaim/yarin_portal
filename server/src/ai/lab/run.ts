@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { BotTestRun, type BotKey } from '../../models/Game.ts'
+import { BotTestRun, WorksheetResponse, type BotKey } from '../../models/Game.ts'
 import { aiJson, AiError } from '../claude.ts'
 import { botNow, forgetReleases, releaseBot, runPassed } from '../release.ts'
 import { casesOf, type LabCase, type LabOutput } from './cases.ts'
@@ -108,7 +108,8 @@ export async function startRun(bot: BotKey, by: string): Promise<string> {
   return run.id as string
 }
 
-/** Runs that were cut off by a restart do not stay "running" forever. */
+/** Runs and checks that were cut off by a restart do not stay "running" forever. */
 export async function closeStaleRuns(): Promise<void> {
+  await WorksheetResponse.updateMany({ reviewingSince: { $ne: null } }, { $set: { reviewingSince: null, reviewError: 'השרת הופעל מחדש באמצע הבדיקה. לחצו שוב על „מתחילים בדיקה”.' } })
   await BotTestRun.updateMany({ status: 'running' }, { $set: { status: 'failed', error: 'השרת הופעל מחדש באמצע הבדיקות.', finishedAt: new Date() } })
 }

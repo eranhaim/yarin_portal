@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto'
 import { Router } from 'express'
 import { z } from 'zod'
 import { businessFile } from '../../ai/businessFile.ts'
-import { aiEnabled, sendAiError, useAiQuota } from '../../ai/claude.ts'
+import { AiError, aiEnabled, sendAiError, useAiQuota } from '../../ai/claude.ts'
 import { readFiles } from '../../ai/files.ts'
 import { methodOfTask } from '../../ai/knowledge.ts'
 import { settleScore, verdictFor } from '../../ai/prompts.ts'
@@ -17,7 +17,7 @@ import { Lead, QuizAttempt, WorksheetResponse, type WorksheetResponseDoc } from 
 import type { TaskView } from '../../models/Plan.ts'
 import { Submission } from '../../models/Submission.ts'
 import { botReleased } from '../../ai/release.ts'
-import { customerOf, openTask, planOf, planView, skillOf, syncTask } from './shared.ts'
+import { customerOf, findTask, openTask, planOf, planView, skillOf, syncTask } from './shared.ts'
 
 // The learning loop for customers: worksheets with versions, the AI examiner, quizzes, the summary of both
 // metrics, and "bring a friend".
@@ -44,12 +44,19 @@ gameRouter.get('/game', async (_req, res) => {
 
 // ---------- Worksheet ----------
 
+/** A check that takes longer than this was cut off (a video of five minutes takes about four). */
+const REVIEW_LIMIT_MS = 12 * 60_000
+
+const isReviewing = (response: WorksheetResponseDoc | null) => Boolean(response?.reviewingSince && Date.now() - response.reviewingSince.getTime() < REVIEW_LIMIT_MS)
+
 export function responseView(response: WorksheetResponseDoc | null) {
-  if (!response) return { answers: {}, submittedAt: null, review: null, chat: [], attempts: [], accepted: false, human: null }
+  if (!response) return { answers: {}, submittedAt: null, review: null, reviewing: false, reviewError: null, chat: [], attempts: [], accepted: false, human: null }
   return {
     answers: response.answers ?? {},
     submittedAt: response.submittedAt,
     review: response.review ?? null,
+    reviewing: isReviewing(response),
+    reviewError: response.reviewError || null,
     chat: response.chat.map((turn) => ({ role: turn.role, text: turn.text, at: turn.at })),
     attempts: response.attempts.map((a) => ({ number: a.number ?? 1, files: a.files, submittedAt: a.submittedAt, score: a.score ?? null, summary: a.summary })),
     accepted: Boolean(response.acceptedAt),
@@ -114,6 +121,10 @@ gameRouter.post('/tasks/:taskId/worksheet/submit', async (req, res) => {
     res.status(404).json({ error: 'אין מסך עבודה למשימה הזו' })
     return
   }
+  if (isReviewing(await findResponse(customer, task.id))) {
+    res.status(409).json({ error: 'הבוחן קורא עכשיו את הגרסה הקודמת. חכו לתשובה, ואז הגישו.' })
+    return
+  }
   const files = await Submission.find({ customerId: customer._id, taskId: task.id, status: 'ready' }).sort({ createdAt: 1 })
   if (filledFields(worksheet, body.answers) === 0 && files.length === 0) {
     res.status(409).json({ error: 'מסך העבודה ריק. מלאו לפחות חלק ממנו, או צרפו קובץ.' })
@@ -151,6 +162,66 @@ async function awardReview(customer: CustomerDoc, task: TaskView, score: number,
 const workText = (task: TaskView, answers: unknown) =>
   task.worksheet ? answersAsText(task.worksheet as Worksheet, (answers ?? {}) as WorksheetAnswers) : '(this task has no worksheet; judge the files)'
 
+/** Reads the work and stores the review. It runs after the answer, because a video can take minutes. */
+async function runReview(customerId: string, taskId: string): Promise<void> {
+  const customer = await Customer.findById(customerId)
+  const found = customer ? await findTask(customer, taskId) : null
+  const doc = customer ? await findResponse(customer, taskId) : null
+  if (!customer || !found || !doc) return
+  const { task, plan } = found
+  const files = await Submission.find({ customerId: customer._id, taskId, status: 'ready' }).sort({ createdAt: 1 })
+  const attempt = doc.attempts[doc.attempts.length - 1]!
+  const before = doc.attempts.length > 1 ? doc.attempts[doc.attempts.length - 2]! : null
+  const [read, method, business] = await Promise.all([
+    readFiles(files.map((f) => ({ name: f.fileName, contentType: f.contentType, size: f.size, key: f.key, note: f.note }))),
+    methodOfTask(task.id),
+    businessFile(customer, { plan, skipTaskId: task.id }),
+  ])
+  const review = await reviewWork({
+    task: { title: task.title, description: task.description, rubric: task.rubric },
+    method,
+    business,
+    worksheet: workText(task, attempt.answers),
+    files: read.content,
+    previous: before
+      ? { number: before.number ?? 1, score: before.score ?? null, improvements: doc.review?.improvements ?? [], worksheet: workText(task, before.answers) }
+      : null,
+  })
+  const score = settleScore(review.score, review.criteria)
+  const pass = passScoreOf(task)
+  const questions = review.questions.slice(0, 2)
+  doc.set('review', {
+    attempt: attempt.number ?? versionOf(doc),
+    score,
+    verdict: verdictFor(score, pass),
+    summary: review.summary,
+    strengths: review.strengths.slice(0, 3),
+    improvements: review.improvements.slice(0, 3),
+    questions,
+    criteria: review.criteria.slice(0, 12),
+    progress: before ? review.progress : '',
+    filesRead: read.read,
+    filesSkipped: read.skipped,
+    finalScore: null,
+    finalNote: '',
+    reviewedAt: new Date(),
+    // Work that is not there yet goes back for a fix; only good work has a defense.
+    finishedAt: score >= pass && questions.length > 0 ? null : new Date(),
+  })
+  attempt.score = score
+  attempt.summary = review.summary.slice(0, 600)
+  doc.markModified('attempts')
+  doc.set('chat', score >= pass && questions.length > 0 ? [{ role: 'assistant', text: questions.join('\n'), at: new Date() }] : [])
+  doc.reviewingSince = null
+  doc.reviewError = ''
+  await doc.save()
+  await awardReview(customer, task, score, `הבוחן בדק: ${task.title}`)
+  // The customer may have done something else meanwhile, so the progress is read again before it changes.
+  const fresh = await Customer.findById(customerId)
+  if (fresh) await syncTask(fresh, plan, task)
+}
+
+/** Starts the check. The customer's screen follows it with GET. */
 gameRouter.post('/tasks/:taskId/review', async (req, res) => {
   const customer = customerOf(res)
   const found = await openTask(customer, req.params.taskId, res)
@@ -166,6 +237,11 @@ gameRouter.post('/tasks/:taskId/review', async (req, res) => {
     res.status(409).json({ error: 'הגישו קודם את מסך העבודה או קובץ, ואז הבוחן יבדוק.' })
     return
   }
+  // A second press (or a second tab) joins the check that already runs.
+  if (isReviewing(response)) {
+    res.status(202).json(await withPlan(customer, plan, response))
+    return
+  }
 
   try {
     await useAiQuota(customer._id)
@@ -175,55 +251,27 @@ gameRouter.post('/tasks/:taskId/review', async (req, res) => {
       doc.attempts.push({ number: 1, answers: doc.answers ?? {}, files: files.map((f) => f.fileName), submittedAt: new Date(), score: null, summary: '' })
       doc.submittedAt ??= new Date()
     }
-    const attempt = doc.attempts[doc.attempts.length - 1]!
-    const before = doc.attempts.length > 1 ? doc.attempts[doc.attempts.length - 2]! : null
-    const [read, method, business] = await Promise.all([
-      readFiles(files.map((f) => ({ name: f.fileName, contentType: f.contentType, size: f.size, key: f.key, note: f.note }))),
-      methodOfTask(task.id),
-      businessFile(customer, { plan, skipTaskId: task.id }),
-    ])
-    const review = await reviewWork({
-      task: { title: task.title, description: task.description, rubric: task.rubric },
-      method,
-      business,
-      worksheet: workText(task, doc.answers),
-      files: read.content,
-      previous: before
-        ? { number: before.number ?? 1, score: before.score ?? null, improvements: doc.review?.improvements ?? [], worksheet: workText(task, before.answers) }
-        : null,
-    })
-    const score = settleScore(review.score, review.criteria)
-    const pass = passScoreOf(task)
-    const questions = review.questions.slice(0, 2)
-    doc.set('review', {
-      attempt: attempt.number ?? versionOf(doc),
-      score,
-      verdict: verdictFor(score, pass),
-      summary: review.summary,
-      strengths: review.strengths.slice(0, 3),
-      improvements: review.improvements.slice(0, 3),
-      questions,
-      criteria: review.criteria.slice(0, 12),
-      progress: before ? review.progress : '',
-      filesRead: read.read,
-      filesSkipped: read.skipped,
-      finalScore: null,
-      finalNote: '',
-      reviewedAt: new Date(),
-      // Work that is not there yet goes back for a fix; only good work has a defense.
-      finishedAt: score >= pass && questions.length > 0 ? null : new Date(),
-    })
-    attempt.score = score
-    attempt.summary = review.summary.slice(0, 600)
-    doc.markModified('attempts')
-    doc.set('chat', score >= pass && questions.length > 0 ? [{ role: 'assistant', text: questions.join('\n'), at: new Date() }] : [])
+    doc.reviewingSince = new Date()
+    doc.reviewError = ''
     await doc.save()
-    await awardReview(customer, task, score, `הבוחן בדק: ${task.title}`)
-    const completed = await syncTask(customer, plan, task)
-    res.json(await withPlan(customer, plan, doc, completed))
+    const customerId = customer.id as string
+    void runReview(customerId, task.id).catch(async (err: unknown) => {
+      if (!(err instanceof AiError)) console.error(`Review of task ${task.id} failed`, err)
+      const why = err instanceof AiError ? err.message : 'הבדיקה נעצרה באמצע. נסו שוב בעוד רגע.'
+      await WorksheetResponse.updateOne({ customerId, taskId: task.id }, { $set: { reviewingSince: null, reviewError: why } }).catch(() => undefined)
+    })
+    res.status(202).json(await withPlan(customer, plan, doc))
   } catch (err) {
     if (!sendAiError(err, res)) throw err
   }
+})
+
+/** The work and the plan while a check runs, and after it ends. */
+gameRouter.get('/tasks/:taskId/review', async (req, res) => {
+  const customer = customerOf(res)
+  const found = await openTask(customer, req.params.taskId, res)
+  if (!found) return
+  res.json(await withPlan(customer, found.plan, await findResponse(customer, found.task.id)))
 })
 
 gameRouter.post('/tasks/:taskId/review/reply', async (req, res) => {
