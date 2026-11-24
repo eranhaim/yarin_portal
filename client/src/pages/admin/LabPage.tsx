@@ -4,8 +4,8 @@ import { api, errorMessage } from '../../lib/api'
 import { formatDateTime } from '../../lib/format'
 import type { BotKey, LabBot } from '../../lib/types'
 
-// The coach lab. Every bot has a fixed set of tests. Its exact version (instructions, lessons, model and tests)
-// must pass before customers meet it, and any change closes it until it passes again.
+// The coach lab. Every bot has a fixed set of tests that a version (instructions, lessons, model and tests) must pass
+// before customers meet it. New lessons wait for their own tests; until then customers keep the tested version.
 
 type Lab = { enabled: boolean; passRate: number; bots: LabBot[] }
 
@@ -68,7 +68,7 @@ export function LabPage() {
           <h1>מעבדת המאמנים</h1>
           <p>
             לכל בוט יש סט בדיקות קבוע. הוא נפתח ללקוחות רק אחרי שהגרסה המדויקת שלו עוברת לפחות {Math.round((lab?.passRate ?? 0.85) * 100)}% מהן, בלי אף כישלון
-            בבדיקה קריטית. כל שינוי בהנחיות או בחומר של השיעורים דורש בדיקה מחדש.
+            בבדיקה קריטית. כששיעור משתנה, הלקוחות ממשיכים עם הידע שנבדק, והידע החדש נפתח אחרי שהוא עובר את הבדיקות.
           </p>
         </div>
         {lab?.enabled && (
@@ -76,9 +76,9 @@ export function LabPage() {
             type="button"
             className="btn btn--primary"
             disabled={running || busy !== null}
-            onClick={() => lab.bots.forEach((b) => !b.released && void run(b.bot))}
+            onClick={() => lab.bots.forEach((b) => (!b.released || b.waiting) && void run(b.bot))}
           >
-            <Icon name="shield" size={17} /> בדיקת כל מי שסגור
+            <Icon name="shield" size={17} /> בדיקת כל מה שהשתנה
           </button>
         )}
       </header>
@@ -113,7 +113,9 @@ function BotCard({ bot, busy, enabled, onRun, onRelease }: { bot: LabBot; busy: 
   const state = bot.running
     ? { label: 'בבדיקה…', tone: 'brand' }
     : bot.released
-      ? { label: 'פתוח ללקוחות', tone: 'success' }
+      ? bot.waiting
+        ? { label: 'פתוח · ידע חדש מחכה לבדיקה', tone: 'warn' }
+        : { label: 'פתוח ללקוחות', tone: 'success' }
       : bot.releasedBefore
         ? { label: 'השתנה. צריך בדיקה מחדש', tone: 'warn' }
         : { label: 'סגור', tone: 'danger' }

@@ -6,8 +6,7 @@ import { businessFile } from '../../ai/businessFile.ts'
 import { sendAiError, useAiQuota, type AiContent } from '../../ai/claude.ts'
 import { COACHES, DIFFICULTIES, modeOf, SCENARIOS, sessionScore } from '../../ai/coaches.ts'
 import { kindOf, readFiles, type WorkFile } from '../../ai/files.ts'
-import { methodFor } from '../../ai/knowledge.ts'
-import { botReleased } from '../../ai/release.ts'
+import { approvedMethod, botReleased } from '../../ai/release.ts'
 import { castClient, coachReply, evaluateSession, transcriptOf, type CoachTurn, type Scenario } from '../../ai/sessions.ts'
 import { answersAsText, type Worksheet, type WorksheetAnswers } from '../../game/content.ts'
 import { dayKey, XP } from '../../game/rules.ts'
@@ -58,7 +57,7 @@ async function requireReleased(persona: CoachPersona, res: Response): Promise<bo
 }
 
 async function memoryOf(customer: CustomerDoc, persona: CoachPersona) {
-  return CoachMemory.findOneAndUpdate({ customerId: customer._id, persona }, {}, { upsert: true, new: true, setDefaultsOnInsert: true })
+  return CoachMemory.findOneAndUpdate({ customerId: customer._id, persona }, {}, { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true })
 }
 
 // ---------- The coaches and the customer's progress with each ----------
@@ -305,7 +304,7 @@ coachRouter.post('/coach/:id/message', async (req, res) => {
       // Files of earlier messages are not sent again; their names stay, and the coach already described them.
       content: m.attachments.length ? `${m.text}\n[צורפו: ${m.attachments.map((a) => a.name).join(', ')}]` : m.text,
     }))
-    const [method, business] = await Promise.all([scenario ? '' : methodFor(COACHES[persona].knowledge), businessFile(customer, { persona })])
+    const [method, business] = await Promise.all([scenario ? '' : approvedMethod(persona), businessFile(customer, { persona })])
     const reply = await coachReply({ persona, mode: session.mode, scenario, method, business, history: [...history, { role: 'user', content }] })
     session.messages.push(
       { role: 'user', text: said.slice(0, 12_000), attachments: files.map(({ id, name, contentType, size, key }) => ({ id, name, contentType, size, key })), at: new Date() },

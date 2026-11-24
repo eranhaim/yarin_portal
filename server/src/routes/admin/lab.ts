@@ -5,7 +5,7 @@ import { AiError, aiEnabled, sendAiError } from '../../ai/claude.ts'
 import { COACHES } from '../../ai/coaches.ts'
 import { casesOf } from '../../ai/lab/cases.ts'
 import { isRunning, startRun } from '../../ai/lab/run.ts'
-import { botStatuses, botVersion, PASS_RATE, releaseBot, runPassed } from '../../ai/release.ts'
+import { botNow, botStatuses, closeBot, PASS_RATE, releaseBot, runPassed } from '../../ai/release.ts'
 import { adminOf } from '../../auth/admin.ts'
 import { parseBody } from '../../http.ts'
 import { BOT_KEYS, BotTestRun, type BotKey, type BotTestRunDoc } from '../../models/Game.ts'
@@ -91,16 +91,16 @@ labRouter.post('/lab/:bot/release', async (req, res) => {
     return
   }
   if (!body.released) {
-    await releaseBot(bot.data, null, '')
+    await closeBot(bot.data)
     res.json({ ok: true })
     return
   }
-  const version = await botVersion(bot.data)
-  const run = await BotTestRun.findOne({ bot: bot.data, version, status: 'done' }).sort({ createdAt: -1 })
+  const now = await botNow(bot.data)
+  const run = await BotTestRun.findOne({ bot: bot.data, version: now.version, status: 'done' }).sort({ createdAt: -1 })
   if (!run || !runPassed(run)) {
     res.status(409).json({ error: 'הגרסה הזו עוד לא עברה את הבדיקות. הריצו אותן קודם.' })
     return
   }
-  await releaseBot(bot.data, version, adminOf(res).name)
+  await releaseBot(bot.data, now, adminOf(res).name)
   res.json({ ok: true })
 })

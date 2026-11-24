@@ -520,6 +520,8 @@ export type LabBot = {
   version: string
   tests: number
   released: boolean
+  /** Open with tested lessons, while newer lessons wait for their tests. */
+  waiting: boolean
   releasedBefore: boolean
   releasedAt: string | null
   releasedBy: string | null

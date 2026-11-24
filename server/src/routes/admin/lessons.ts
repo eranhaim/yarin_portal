@@ -52,7 +52,7 @@ lessonsRouter.patch('/plans/:planId/tasks/:taskId/lesson', async (req, res) => {
   const note = await LessonNote.findOneAndUpdate(
     { taskId: found.task._id },
     { $set: { planId: found.plan._id, ...body } },
-    { upsert: true, new: true, setDefaultsOnInsert: true },
+    { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
   )
   // The coaches learn from this text, so their version changes and they must pass their tests again.
   forgetKnowledge()
@@ -104,7 +104,7 @@ lessonsRouter.post('/plans/:planId/tasks/:taskId/lesson/generate', async (req, r
           method: note.method,
         },
       },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
+      { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
     )
     forgetKnowledge()
     forgetReleases()

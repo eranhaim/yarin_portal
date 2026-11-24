@@ -77,7 +77,7 @@ gameRouter.get('/tasks/:taskId/worksheet', async (req, res) => {
 const answersBody = z.object({ answers: worksheetAnswersSchema })
 
 async function saveAnswers(customerId: CustomerDoc['_id'], planId: unknown, taskId: string, answers: WorksheetAnswers) {
-  return WorksheetResponse.findOneAndUpdate({ customerId, taskId }, { $set: { answers, planId } }, { upsert: true, new: true, setDefaultsOnInsert: true })
+  return WorksheetResponse.findOneAndUpdate({ customerId, taskId }, { $set: { answers, planId } }, { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true })
 }
 
 // A draft. It saves by itself while the customer writes.

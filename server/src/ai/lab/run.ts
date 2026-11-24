@@ -1,9 +1,7 @@
 import { z } from 'zod'
-import { BotTestRun, COACH_PERSONAS, type BotKey, type CoachPersona } from '../../models/Game.ts'
+import { BotTestRun, type BotKey } from '../../models/Game.ts'
 import { aiJson, AiError } from '../claude.ts'
-import { COACHES } from '../coaches.ts'
-import { methodFor } from '../knowledge.ts'
-import { botVersion, forgetReleases, releaseBot, runPassed } from '../release.ts'
+import { botNow, forgetReleases, releaseBot, runPassed } from '../release.ts'
 import { casesOf, type LabCase, type LabOutput } from './cases.ts'
 
 // Runs a bot's fixed tests in the background and stores the result. A judge (a separate call that sees only the
@@ -67,7 +65,6 @@ async function runCase(test: LabCase, method: string) {
 }
 
 const PARALLEL = 4
-const isCoach = (bot: BotKey): bot is CoachPersona => (COACH_PERSONAS as readonly string[]).includes(bot)
 const running = new Set<BotKey>()
 
 export const isRunning = (bot: BotKey) => running.has(bot)
@@ -77,15 +74,14 @@ export async function startRun(bot: BotKey, by: string): Promise<string> {
   if (running.has(bot)) throw new AiError(409, 'הבדיקות של הבוט הזה כבר רצות.')
   running.add(bot)
   const tests = casesOf(bot)
-  const version = await botVersion(bot)
-  const run = await BotTestRun.create({ bot, version, total: tests.length })
+  const now = await botNow(bot)
+  const run = await BotTestRun.create({ bot, version: now.version, total: tests.length })
 
   const work = async () => {
-    const method = isCoach(bot) ? await methodFor(COACHES[bot].knowledge) : ''
     const queue = [...tests]
     const worker = async () => {
       for (let test = queue.shift(); test; test = queue.shift()) {
-        const result = await runCase(test, method)
+        const result = await runCase(test, now.method)
         await BotTestRun.updateOne(
           { _id: run._id },
           { $push: { cases: result }, $inc: { passed: result.passed ? 1 : 0, criticalFailed: !result.passed && result.critical ? 1 : 0 } },
@@ -100,7 +96,7 @@ export async function startRun(bot: BotKey, by: string): Promise<string> {
     done.finishedAt = new Date()
     await done.save()
     // A version that passes opens to customers at once; a version that fails never does.
-    if (runPassed(done)) await releaseBot(bot, version, by)
+    if (runPassed(done)) await releaseBot(bot, now, by)
     else forgetReleases()
   }
   void work()

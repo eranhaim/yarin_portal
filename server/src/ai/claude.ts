@@ -127,7 +127,7 @@ export async function useAiQuota(customerId: Types.ObjectId): Promise<void> {
   const usage = await AiUsage.findOneAndUpdate(
     { customerId, day: dayKey() },
     { $inc: { count: 1 } },
-    { upsert: true, new: true },
+    { upsert: true, returnDocument: 'after' },
   )
   if (usage.count > env.AI_DAILY_LIMIT) {
     throw new AiError(429, 'הגעתם למכסת השיחות עם הבוטים להיום. מחר ממשיכים!')
