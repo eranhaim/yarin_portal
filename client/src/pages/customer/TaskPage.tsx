@@ -1,21 +1,21 @@
-import { useEffect, useState, type CSSProperties } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router'
-import { FileList } from '../../components/FileList'
-import { Icon, type IconName } from '../../components/Icon'
-import { TaskStatusControl } from '../../components/TaskStatusControl'
-import { VideoPlaylist } from '../../components/VideoPlaylist'
+import { useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { Link, useParams } from 'react-router'
+import { Icon } from '../../components/Icon'
 import { api, errorMessage } from '../../lib/api'
 import { dueInfo } from '../../lib/format'
-import { DISTRICT_COLORS, SKILL_META, missionLabel } from '../../lib/game'
-import { taskStatus, type MyTask, type TaskStatus, type WorksheetView } from '../../lib/types'
+import { DISTRICT_COLORS, minutesLabel, missionLabel, SKILL_META, STEP_ICON } from '../../lib/game'
+import type { MyPlan, MyTask, StepKey, TaskBrief, WorkResult, WorksheetView } from '../../lib/types'
 import { useCustomer } from './customerContext'
 import { HomeworkPanel } from './HomeworkPanel'
+import { PracticeStep } from './mission/PracticeStep'
 import { QuizPanel } from './mission/QuizPanel'
 import { ReviewPanel } from './mission/ReviewPanel'
-import { WorksheetPanel } from './mission/WorksheetPanel'
+import { WatchStep } from './mission/WatchStep'
+import './mission/mission.css'
 import { NoPlan } from './NoPlan'
 
-type Tab = 'brief' | 'worksheet' | 'homework' | 'quiz' | 'review'
+// One task as a guided path: watch, check that it is clear, practice on your own business, get feedback, improve.
+// The page opens on the current step, and moves on when the step is done.
 
 export function TaskPage() {
   const { chapterId, taskId } = useParams()
@@ -29,61 +29,86 @@ export function TaskPage() {
       <div className="cx-empty">
         <h2>{chapter?.state === 'locked' ? 'השלב הזה עדיין נעול' : 'המשימה לא נמצאה'}</h2>
         <Link to="/map" className="btn btn--game">
-          חזרה לעיר
+          חזרה
         </Link>
       </div>
     )
   }
-  // A new key per task resets the tabs and the worksheet state.
+  // A new key per task resets the steps and the worksheet state.
   return <Mission key={task.id} chapterIndex={chapterIndex} task={task} />
 }
 
 function Mission({ chapterIndex, task }: { chapterIndex: number; task: MyTask }) {
-  const { plan, updateTask, applyPlan, refreshGame } = useCustomer()
+  const { plan, updateTask, applyPlan, celebrateTask } = useCustomer()
   const chapter = plan!.chapters[chapterIndex]!
-  const taskIndex = chapter.tasks.findIndex((t) => t.id === task.id)
-  const [params, setParams] = useSearchParams()
-  const tab = (params.get('tab') as Tab | null) ?? 'brief'
+  const { flow } = task
+  const [step, setStep] = useState<StepKey | null>(flow.current ?? flow.steps[0]?.key ?? null)
+  const [view, setView] = useState<WorksheetView | null>(null)
+  const [brief, setBrief] = useState<TaskBrief | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [view, setView] = useState<WorksheetView | null>(null)
+  const needsView = flow.steps.some((s) => s.key === 'practice' || s.key === 'check')
 
   useEffect(() => {
-    if (!task.hasWorksheet) return
     let cancelled = false
-    api<WorksheetView>(`/me/tasks/${task.id}/worksheet`)
-      .then((v) => !cancelled && setView(v))
+    if (needsView) {
+      api<{ view: WorksheetView }>(`/me/tasks/${task.id}/worksheet`)
+        .then((res) => !cancelled && setView(res.view))
+        .catch((err) => !cancelled && setError(errorMessage(err)))
+    }
+    api<{ brief: TaskBrief | null }>(`/me/tasks/${task.id}/brief`)
+      .then((res) => !cancelled && setBrief(res.brief))
       .catch(() => undefined)
     return () => {
       cancelled = true
     }
-  }, [task.id, task.hasWorksheet])
+  }, [task.id, needsView])
 
-  const status = taskStatus(task)
-  const due = dueInfo(task.dueAt, task.completed)
-  const flatIndex = plan!.chapters.slice(0, chapterIndex).reduce((n, c) => n + c.tasks.length, 0) + taskIndex
-  const label = missionLabel(task.title, flatIndex + 1)
-  const color = DISTRICT_COLORS[chapterIndex % DISTRICT_COLORS.length]
-  const skill = task.skill ? SKILL_META[task.skill] : null
-  const prev = chapter.tasks[taskIndex - 1]
-  const next = chapter.tasks[taskIndex + 1]
-  const reviewReady = Boolean(view?.submittedAt) || task.submissions.length > 0
+  /** The plan after something was done here. Moves to the next step when the open one is finished. */
+  const onPlan = useCallback(
+    (next: MyPlan | null, completed?: boolean) => {
+      applyPlan(next)
+      const updated = next?.chapters.flatMap((c) => c.tasks).find((t) => t.id === task.id)
+      if (!updated) return
+      if (completed ?? (updated.completed && !task.completed)) celebrateTask(task.id)
+      setStep((open) => {
+        const state = updated.flow.steps.find((s) => s.key === open)?.state
+        return state === 'done' && updated.flow.current ? updated.flow.current : open
+      })
+    },
+    [applyPlan, celebrateTask, task.completed, task.id],
+  )
 
-  const setTab = (next: Tab) => setParams(next === 'brief' ? {} : { tab: next }, { replace: true })
+  /** Quizzes and reviews show their result first; the customer moves on with a button. */
+  const onResult = useCallback(
+    (next: MyPlan, completed: boolean) => {
+      applyPlan(next)
+      if (completed) celebrateTask(task.id)
+    },
+    [applyPlan, celebrateTask, task.id],
+  )
 
-  const tabs: { key: Tab; label: string; icon: IconName; done?: boolean; show: boolean }[] = [
-    { key: 'brief', label: 'תדריך', icon: 'video', show: true },
-    { key: 'worksheet', label: 'מסך עבודה', icon: 'edit', done: Boolean(view?.submittedAt), show: task.hasWorksheet },
-    { key: 'homework', label: 'הגשת קבצים', icon: 'upload', done: task.submissions.length > 0, show: true },
-    { key: 'quiz', label: 'חידון', icon: 'bulb', done: Boolean(task.quizBest), show: task.hasQuiz },
-    { key: 'review', label: 'הבוחן', icon: 'sparkles', done: Boolean(view?.review?.finishedAt), show: task.hasWorksheet },
-  ]
+  const onWork = useCallback(
+    (result: WorkResult) => {
+      setView(result.view)
+      onPlan(result.plan, result.completed)
+    },
+    [onPlan],
+  )
 
-  const change = async (value: TaskStatus) => {
+  const goNext = () => {
+    const index = flow.steps.findIndex((s) => s.key === step)
+    const next = flow.current ?? flow.steps[index + 1]?.key ?? null
+    if (next) setStep(next)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const finishManually = async () => {
     setBusy(true)
     setError(null)
     try {
-      await updateTask(task.id, value)
+      await updateTask(task.id, 'completed')
+      celebrateTask(task.id)
     } catch (err) {
       setError(errorMessage(err))
     } finally {
@@ -91,38 +116,45 @@ function Mission({ chapterIndex, task }: { chapterIndex: number; task: MyTask })
     }
   }
 
-  const onView = (next: WorksheetView) => {
-    setView(next)
-    void refreshGame()
-  }
+  const due = dueInfo(task.dueAt, task.completed)
+  const taskIndex = chapter.tasks.findIndex((t) => t.id === task.id)
+  const flatIndex = plan!.chapters.slice(0, chapterIndex).reduce((n, c) => n + c.tasks.length, 0) + taskIndex
+  const label = missionLabel(task.title, flatIndex + 1)
+  const color = DISTRICT_COLORS[chapterIndex % DISTRICT_COLORS.length]
+  const skill = task.skill ? SKILL_META[task.skill] : null
 
   return (
     <div className="mission" style={{ '--c': color } as CSSProperties}>
       <Link to={`/level/${chapter.id}`} className="cx-back">
-        <Icon name="arrowLeft" size={18} /> שלב {chapterIndex + 1}: {chapter.title}
+        <Icon name="arrowLeft" size={16} /> שלב {chapterIndex + 1}: {chapter.title}
       </Link>
 
       <header className="mission__head">
-        <div className="mission__badge">{label.badge}</div>
+        <span className="mission__badge">{label.badge}</span>
         <div className="mission__titles">
-          <span className="mission__eyebrow">
-            משימה {taskIndex + 1}/{chapter.tasks.length}
+          <h1>{label.label}</h1>
+          <p className="mission__meta">
+            <span>
+              משימה {taskIndex + 1} מתוך {chapter.tasks.length}
+            </span>
             {skill && (
               <span className="mission__skill" style={{ '--s': skill.color } as CSSProperties}>
                 <Icon name={skill.icon} size={13} /> {skill.label}
               </span>
             )}
+            {!task.completed && flow.minutesLeft > 0 && (
+              <span>
+                <Icon name="clock" size={13} /> נשארו בערך {minutesLabel(flow.minutesLeft)}
+              </span>
+            )}
+            {due && <span className={`cx-due cx-due--${due.tone}`}>{due.label}</span>}
+          </p>
+        </div>
+        {task.completed && (
+          <span className="mission__done">
+            <Icon name="check" size={16} /> הושלמה
           </span>
-          <h1>{label.label}</h1>
-          {due && (
-            <span className={`cx-due cx-due--${due.tone}`}>
-              <Icon name="clock" size={14} /> {due.label}
-            </span>
-          )}
-        </div>
-        <div className="mission__status">
-          <TaskStatusControl value={status} onChange={(v) => void change(v)} disabled={busy} />
-        </div>
+        )}
       </header>
 
       {error && (
@@ -131,109 +163,122 @@ function Mission({ chapterIndex, task }: { chapterIndex: number; task: MyTask })
         </div>
       )}
 
-      <nav className="mission__tabs" role="tablist" aria-label="חלקי המשימה">
-        {tabs
-          .filter((t) => t.show)
-          .map((t) => (
-            <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} className="mission__tab" onClick={() => setTab(t.key)}>
-              <Icon name={t.icon} size={17} />
-              <span>{t.label}</span>
-              {t.done && <i className="mission__tab-done" aria-label="בוצע" />}
-            </button>
+      {flow.steps.length > 0 && (
+        <ol className="path" aria-label="שלבי המשימה">
+          {flow.steps.map((s, i) => (
+            <li key={s.key} className={`path__step path__step--${s.state}${step === s.key ? ' is-open' : ''}`}>
+              <button type="button" onClick={() => setStep(s.key)} aria-current={step === s.key ? 'step' : undefined}>
+                <span className="path__icon">{s.state === 'done' ? <Icon name="check" size={16} /> : <Icon name={STEP_ICON[s.key]} size={16} />}</span>
+                <span className="path__text">
+                  <b>{s.label}</b>
+                  <small>{s.note || minutesLabel(s.minutes)}</small>
+                </span>
+                <span className="visually-hidden">
+                  שלב {i + 1}, {s.state === 'done' ? 'הושלם' : s.state === 'current' ? 'עכשיו' : 'בהמשך'}
+                </span>
+              </button>
+            </li>
           ))}
-      </nav>
-
-      <div key={tab} className="mission__body" role="tabpanel">
-        {tab === 'brief' && (
-          <>
-            {task.description && (
-              <section className="panel">
-                <h2 className="panel__title">
-                  <Icon name="list" size={18} /> מה עושים?
-                </h2>
-                <p className="mission__text">{task.description}</p>
-              </section>
-            )}
-            {task.videos.length > 0 && <VideoPlaylist videos={task.videos} heading="השיעור המוקלט" />}
-            {task.files.length > 0 && (
-              <section className="panel">
-                <h2 className="panel__title">
-                  <Icon name="file" size={18} /> קבצים להורדה
-                </h2>
-                <FileList files={task.files} />
-              </section>
-            )}
-            <div className="mission__next-steps">
-              {task.hasWorksheet && (
-                <button type="button" className="btn btn--game" onClick={() => setTab('worksheet')}>
-                  <Icon name="edit" size={18} /> למסך העבודה
-                </button>
-              )}
-              {task.hasQuiz && (
-                <button type="button" className="btn btn--ghost-light" onClick={() => setTab('quiz')}>
-                  <Icon name="bulb" size={18} /> לחידון
-                </button>
-              )}
-            </div>
-          </>
-        )}
-
-        {tab === 'worksheet' && task.worksheet && (
-          view ? (
-            <WorksheetPanel taskId={task.id} worksheet={task.worksheet} view={view} onView={onView} onSubmitted={() => setTab('review')} />
-          ) : (
-            <div className="page-loader">
-              <span className="spinner" />
-            </div>
-          )
-        )}
-
-        {tab === 'homework' && <HomeworkPanel task={task} onPlan={applyPlan} />}
-
-        {tab === 'quiz' && task.quiz && <QuizPanel taskId={task.id} quiz={task.quiz} best={task.quizBest} onDone={() => void refreshGame()} />}
-
-        {tab === 'review' && view && <ReviewPanel taskId={task.id} view={view} onView={onView} ready={reviewReady} rubric={task.rubric ?? []} />}
-      </div>
-
-      {status !== 'completed' && (
-        <div className="mission__cta">
-          <button type="button" className="btn btn--game btn--lg" disabled={busy} onClick={() => void change(status === 'not_started' ? 'started' : 'completed')}>
-            <Icon name={status === 'not_started' ? 'play' : 'check'} size={20} />
-            {status === 'not_started' ? 'מתחילים את המשימה' : 'סיימתי! המשימה הושלמה'}
-          </button>
-        </div>
+        </ol>
       )}
 
-      <nav className="cx-taskpage__pager" aria-label="משימות נוספות בשלב">
-        {prev ? (
-          <Link to={`/level/${chapter.id}/task/${prev.id}`} className="cx-pager">
-            <Icon name="chevronLeft" size={18} />
-            <span>
-              <small>המשימה הקודמת</small>
-              {missionLabel(prev.title, flatIndex).label}
-            </span>
-          </Link>
-        ) : (
-          <span />
-        )}
-        {next ? (
-          <Link to={`/level/${chapter.id}/task/${next.id}`} className="cx-pager cx-pager--next">
-            <span>
-              <small>המשימה הבאה</small>
-              {missionLabel(next.title, flatIndex + 2).label}
-            </span>
-            <Icon name="chevronRight" size={18} />
-          </Link>
-        ) : (
-          <Link to="/map" className="cx-pager cx-pager--next">
-            <span>
-              <small>סוף השלב</small>
-              חזרה לעיר
-            </span>
-            <Icon name="chevronRight" size={18} />
-          </Link>
-        )}
-      </nav>
+      <div className="mission__layout">
+        <div key={step} className="mission__body">
+          {step === 'watch' && <WatchStep task={task} onPlan={onPlan} />}
+
+          {step === 'quiz' && task.quiz && <QuizPanel taskId={task.id} quiz={task.quiz} best={task.quizBest} onResult={onResult} onNext={goNext} />}
+
+          {step === 'practice' &&
+            (task.practice === 'diagnosis' ? (
+              <section className="panel diagnosis-cta">
+                <Icon name="route" size={34} />
+                <h2>{plan!.route.diagnosed ? 'האבחון הושלם' : 'אבחון העסק'}</h2>
+                <p>
+                  {plan!.route.diagnosed
+                    ? `המסלול שלכם: ${plan!.route.track?.label ?? ''}. אפשר לעדכן את האבחון כשמשהו משתנה בעסק.`
+                    : 'בערך 8 דקות. לפי התשובות נבנה המסלול האישי שלכם, ונקודת ההתחלה של העסק.'}
+                </p>
+                <Link to="/diagnosis" className="btn btn--game btn--lg">
+                  {plan!.route.diagnosed ? 'לתוצאות האבחון' : 'מתחילים'}
+                </Link>
+              </section>
+            ) : (
+              task.worksheet && (view ? <PracticeStep task={task} worksheet={task.worksheet} view={view} onView={setView} onWork={onWork} onPlan={onPlan} /> : <Loading />)
+            ))}
+
+          {step === 'files' && <HomeworkPanel task={task} onPlan={onPlan} />}
+
+          {step === 'check' && (view ? <ReviewPanel task={task} view={view} onWork={(r) => (setView(r.view), onResult(r.plan, r.completed))} onFix={() => setStep(task.worksheet ? 'practice' : 'files')} /> : <Loading />)}
+
+          {flow.manual && (
+            <section className="panel mission__manual">
+              <p className="mission__text">{task.description || 'משימה קצרה בלי שלבים.'}</p>
+              <HomeworkPanel task={task} onPlan={onPlan} />
+              {!task.completed && (
+                <button type="button" className="btn btn--game btn--lg" disabled={busy} onClick={() => void finishManually()}>
+                  {busy ? <span className="spinner" /> : <Icon name="check" size={20} />} סיימתי את המשימה
+                </button>
+              )}
+            </section>
+          )}
+        </div>
+
+        <aside className="mission__side">
+          {brief && <BriefCard brief={brief} />}
+          {task.description && !flow.manual && (
+            <details className="side-card" open={!brief}>
+              <summary>מה עושים במשימה</summary>
+              <p className="mission__text">{task.description}</p>
+            </details>
+          )}
+          {task.completed && <NextTask plan={plan!} />}
+        </aside>
+      </div>
     </div>
+  )
+}
+
+const Loading = () => (
+  <div className="page-loader">
+    <span className="spinner" />
+  </div>
+)
+
+/** Why this task matters for this business, and what to emphasize (written for each customer). */
+function BriefCard({ brief }: { brief: TaskBrief }) {
+  return (
+    <section className="side-card side-card--brief">
+      <h2>
+        <Icon name="target" size={16} /> מותאם לעסק שלכם
+      </h2>
+      <p>{brief.why}</p>
+      {brief.focus.length > 0 && (
+        <ul>
+          {brief.focus.map((f) => (
+            <li key={f}>{f}</li>
+          ))}
+        </ul>
+      )}
+      {brief.example && (
+        <details>
+          <summary>דוגמה לתשובה טובה</summary>
+          <p>{brief.example}</p>
+        </details>
+      )}
+    </section>
+  )
+}
+
+function NextTask({ plan }: { plan: MyPlan }) {
+  const { focus } = plan
+  if (focus.kind !== 'task') return null
+  return (
+    <section className="side-card side-card--next">
+      <small>הדבר הבא</small>
+      <strong>{missionLabel(focus.title, 1).label}</strong>
+      <Link to={`/level/${focus.chapterId}/task/${focus.taskId}`} className="btn btn--game btn--sm">
+        ממשיכים
+      </Link>
+    </section>
   )
 }

@@ -5,7 +5,7 @@ import { groupColor } from '../../lib/groups'
 import { Icon } from '../../components/Icon'
 import { api, errorMessage } from '../../lib/api'
 import { fromLocalInput, toLocalInput } from '../../lib/format'
-import type { AdminCustomer, Asset, Plan, Quiz, TaskContent } from '../../lib/types'
+import type { AdminCustomer, Asset, Plan, Quiz, RouteOptions, TaskContent } from '../../lib/types'
 import { MediaManager } from './MediaManager'
 import { TaskGameContent } from './TaskGameContent'
 
@@ -13,12 +13,13 @@ import { TaskGameContent } from './TaskGameContent'
 
 type DraftTask = { key: string; id?: string; title: string; description: string; due: string; open: boolean }
 type DraftChapter = { key: string; id?: string; title: string; description: string; tasks: DraftTask[]; collapsed: boolean }
-type Draft = { title: string; description: string; chapters: DraftChapter[] }
+type Draft = { title: string; description: string; libraryOpen: boolean; chapters: DraftChapter[] }
 
 const newKey = () => crypto.randomUUID()
 const emptyDraft = (): Draft => ({
   title: '',
   description: '',
+  libraryOpen: true,
   chapters: [{ key: newKey(), title: '', description: '', tasks: [], collapsed: false }],
 })
 
@@ -26,6 +27,7 @@ function toDraft(plan: Plan): Draft {
   return {
     title: plan.title,
     description: plan.description,
+    libraryOpen: plan.libraryOpen,
     chapters: plan.chapters.map((c) => ({
       key: c.id,
       id: c.id,
@@ -48,6 +50,7 @@ function toPayload(d: Draft) {
   return {
     title: d.title,
     description: d.description,
+    libraryOpen: d.libraryOpen,
     chapters: d.chapters.map((c) => ({
       id: c.id,
       title: c.title,
@@ -77,6 +80,12 @@ function contentOf(plan: Plan, taskId: string): TaskContent {
     worksheet: task?.worksheet ?? null,
     quiz: (task?.quiz as Quiz | null | undefined) ?? null,
     rubric: task?.rubric ?? [],
+    practice: task?.practice ?? 'worksheet',
+    fileRule: task?.fileRule ?? 'optional',
+    passScore: task?.passScore ?? 70,
+    minutes: task?.minutes ?? null,
+    tracks: task?.tracks ?? [],
+    stages: task?.stages ?? [],
   }
 }
 
@@ -116,6 +125,13 @@ function PlanEditor({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [focusKey, setFocusKey] = useState<string | null>(null)
+  const [routes, setRoutes] = useState<RouteOptions | null>(null)
+
+  useEffect(() => {
+    api<RouteOptions>('/admin/tracks')
+      .then(setRoutes)
+      .catch(() => undefined)
+  }, [])
 
   const loadAssets = useCallback(async (planId: string) => {
     const res = await api<{ assets: Asset[] }>(`/admin/plans/${planId}/assets`)
@@ -321,6 +337,10 @@ function PlanEditor({ id }: { id: string }) {
               onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
             />
           </label>
+          <label className="toggle">
+            <input type="checkbox" checked={draft.libraryOpen} onChange={(e) => setDraft((d) => ({ ...d, libraryOpen: e.target.checked }))} />
+            כל השיעורים המוקלטים פתוחים בספרייה (כבוי: רק השיעורים של השלבים הפתוחים)
+          </label>
         </div>
       </section>
 
@@ -427,6 +447,11 @@ function PlanEditor({ id }: { id: string }) {
                             >
                               <Icon name="video" size={14} /> {videoCount}
                               <Icon name="file" size={14} /> {fileCount}
+                              {(game?.tracks.length ?? 0) + (game?.stages.length ?? 0) > 0 && (
+                                <span className="adm-task__game" title="משימה של מסלול">
+                                  <Icon name="route" size={14} />
+                                </span>
+                              )}
                               {hasGame && (
                                 <span className="adm-task__game" title="יש מסך עבודה או חידון">
                                   <Icon name="sparkles" size={14} />
@@ -481,6 +506,7 @@ function PlanEditor({ id }: { id: string }) {
                                   planId={saved.id}
                                   taskId={task.id!}
                                   content={contentOf(saved, task.id!)}
+                                  routes={routes}
                                   onSaved={(content) => setSaved((p) => (p ? withContent(p, task.id!, content) : p))}
                                 />
                               )}

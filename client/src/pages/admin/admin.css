@@ -84,7 +84,7 @@
   scrollbar-width: none;
 }
 
-@media (max-width: 1300px) {
+@media (max-width: 1600px) {
   .adm-top__status {
     display: none;
   }
@@ -1399,6 +1399,7 @@
 }
 
 .adm-tab {
+  text-decoration: none;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1412,6 +1413,7 @@
   cursor: pointer;
 }
 
+.adm-tab.active,
 .adm-tab[aria-selected='true'] {
   background: var(--gold);
   box-shadow: 2px 2px 0 var(--ink);
@@ -2194,4 +2196,440 @@
 
 .adm-content__preview small {
   color: var(--text-muted);
+}
+
+/* ---------- Work (the review queue) ---------- */
+
+.adm-filter {
+  display: flex;
+  gap: 4px;
+  width: fit-content;
+  padding: 4px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: #fff;
+}
+
+.adm-filter button {
+  padding: 4px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.adm-filter button[aria-checked='true'] {
+  background: var(--ink);
+  color: #fff;
+}
+
+.adm-works {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.adm-works button {
+  display: grid;
+  grid-template-columns: auto minmax(120px, 0.7fr) minmax(0, 1.6fr) auto auto;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-lg);
+  background: var(--paper);
+  color: var(--text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.adm-works button:hover {
+  background: #fff;
+}
+
+.adm-works .is-requested button {
+  border-inline-start: 8px solid var(--red);
+}
+
+.adm-works__who,
+.adm-works__task {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.adm-works small {
+  color: var(--text-muted);
+}
+
+.adm-works__score {
+  font-size: 1.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 760px) {
+  .adm-works button {
+    grid-template-columns: auto 1fr auto;
+  }
+
+  .adm-works__task {
+    grid-column: 1 / -1;
+    order: 5;
+  }
+}
+
+.adm-work {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+}
+
+.adm-work__answers {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.adm-work__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.adm-work__meta .select {
+  width: auto;
+}
+
+@media (max-width: 860px) {
+  .adm-work {
+    grid-template-columns: 1fr;
+  }
+}
+
+.adm-decision {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.adm-decision > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.adm-review__criteria {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 0 !important;
+  list-style: none;
+}
+
+.adm-review__criteria li {
+  display: flex;
+  flex-direction: column;
+  padding-inline-start: 12px;
+  border-inline-start: 4px solid var(--danger);
+}
+
+.adm-review__criteria .is-met {
+  border-color: var(--success);
+}
+
+.adm-review__criteria .is-partial {
+  border-color: var(--gold);
+}
+
+.adm-review__criteria q {
+  color: var(--text-muted);
+}
+
+.adm-review__progress {
+  color: var(--info);
+}
+
+.adm-review > small {
+  display: block;
+  color: var(--text-muted);
+}
+
+/* ---------- The two metrics and the route ---------- */
+
+.adm-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 18px;
+}
+
+.adm-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.adm-metric h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.adm-metric--learn {
+  border-top: 8px solid var(--blue);
+}
+
+.adm-metric--biz {
+  border-top: 8px solid var(--success);
+}
+
+.adm-metric .adm-stats {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.adm-metric__notes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding-inline-start: 18px;
+  font-size: 0.9rem;
+}
+
+.adm-metric__table {
+  overflow-x: auto;
+}
+
+.adm-metric__table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.adm-metric__table th,
+.adm-metric__table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+}
+
+.adm-route {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.adm-route__actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.adm-diagnosis {
+  margin-top: 14px;
+}
+
+.adm-diagnosis summary,
+.adm-lesson summary,
+.adm-bot__list summary {
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.adm-diagnosis p {
+  margin: 8px 0;
+}
+
+/* ---------- Task content: audience and lesson notes ---------- */
+
+.adm-content__audience {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.88rem;
+}
+
+.adm-content__audience > span {
+  font-weight: 700;
+}
+
+.adm-content__audience button {
+  padding: 3px 11px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.adm-content__audience button[aria-pressed='true'] {
+  background: var(--gold);
+  font-weight: 700;
+}
+
+.adm-content__audience small {
+  color: var(--text-muted);
+}
+
+.adm-content__number {
+  width: 76px;
+  padding-block: 4px;
+}
+
+.adm-content__skill .select {
+  min-width: 120px;
+}
+
+.adm-lesson summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.92rem;
+}
+
+.adm-lesson__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+/* ---------- The coach lab ---------- */
+
+.adm-lab {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  align-items: start;
+  gap: 18px;
+}
+
+.adm-bot {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.adm-bot .adm-card__head {
+  margin-bottom: 0;
+}
+
+.adm-bot__result {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.adm-bot__bar {
+  height: 12px;
+  overflow: hidden;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: #fff;
+}
+
+.adm-bot__bar i {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+  transition: width 0.4s ease;
+}
+
+.adm-bot__bar .is-ok {
+  background: var(--success);
+}
+
+.adm-bot__result em,
+.adm-bot__list em {
+  color: var(--danger);
+  font-size: 0.82rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.adm-bot__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.adm-bot__list ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.adm-bot__list details summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.adm-bot__mark {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--paper-3);
+}
+
+.is-passed > details > summary .adm-bot__mark {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.is-failed > details > summary .adm-bot__mark {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.adm-bot__case {
+  padding: 8px 28px;
+  font-size: 0.86rem;
+}
+
+.adm-bot__case li {
+  display: flex;
+  flex-direction: column;
+  padding-inline-start: 10px;
+  border-inline-start: 3px solid var(--danger);
+}
+
+.adm-bot__case li.is-passed {
+  border-color: var(--success);
+}
+
+.adm-bot__case small {
+  color: var(--text-muted);
+}
+
+.adm-bot__case pre {
+  max-height: 260px;
+  margin: 10px 0 0;
+  padding: 10px;
+  overflow: auto;
+  border-radius: 8px;
+  background: var(--paper-2);
+  font: inherit;
+  white-space: pre-wrap;
 }

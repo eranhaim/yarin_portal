@@ -6,9 +6,13 @@ const EMPTY: SubmissionSummary = { unread: 0, byCustomer: {}, latestAt: null }
 const POLL_MS = 30_000
 const BASE_TITLE = typeof document === 'undefined' ? '' : document.title
 
-export type InboxState = { summary: SubmissionSummary; refresh: () => Promise<void> }
+/** Work (handed-in worksheets) that waits for Yarin and Oren. */
+export type WorksSummary = { open: number; requested: number }
+const NO_WORKS: WorksSummary = { open: 0, requested: 0 }
 
-export const InboxContext = createContext<InboxState>({ summary: EMPTY, refresh: async () => undefined })
+export type InboxState = { summary: SubmissionSummary; works: WorksSummary; refresh: () => Promise<void> }
+
+export const InboxContext = createContext<InboxState>({ summary: EMPTY, works: NO_WORKS, refresh: async () => undefined })
 
 export function useInbox() {
   return useContext(InboxContext)
@@ -20,11 +24,13 @@ export function useInbox() {
  */
 export function useInboxPolling(): InboxState {
   const [summary, setSummary] = useState<SubmissionSummary>(EMPTY)
+  const [works, setWorks] = useState<WorksSummary>(NO_WORKS)
   const lastLatest = useRef<string | null | undefined>(undefined)
 
   const refresh = useCallback(async () => {
     try {
-      const next = await api<SubmissionSummary>('/admin/submissions/summary')
+      const [next, nextWorks] = await Promise.all([api<SubmissionSummary>('/admin/submissions/summary'), api<WorksSummary>('/admin/works/summary')])
+      setWorks(nextWorks)
       // Only a later upload counts as new: marking items read can make latestAt older, or null.
       const known = lastLatest.current
       const isLater = next.latestAt !== null && (known == null || next.latestAt > known)
@@ -54,11 +60,12 @@ export function useInboxPolling(): InboxState {
   }, [refresh])
 
   useEffect(() => {
-    document.title = summary.unread > 0 ? `(${summary.unread}) ${BASE_TITLE}` : BASE_TITLE
+    const count = summary.unread + works.open
+    document.title = count > 0 ? `(${count}) ${BASE_TITLE}` : BASE_TITLE
     return () => {
       document.title = BASE_TITLE
     }
-  }, [summary.unread])
+  }, [summary.unread, works.open])
 
-  return { summary, refresh }
+  return { summary, works, refresh }
 }

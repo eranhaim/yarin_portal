@@ -382,7 +382,7 @@ function CustomerDetail({ id }: { id: string }) {
             </div>
           )}
 
-          <CustomerGamePanel customerId={customer.id} taskTitles={taskTitles} />
+          <CustomerGamePanel customerId={customer.id} taskTitles={taskTitles} onRouteChange={() => void loadProgress()} />
         </div>
       </div>
 

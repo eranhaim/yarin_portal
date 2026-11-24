@@ -1,21 +1,18 @@
-import { useState, type CSSProperties } from 'react'
+import type { CSSProperties } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { Icon } from '../../components/Icon'
 import { Mascot } from '../../components/mascot/Mascot'
 import { StatusPill } from '../../components/TaskStatusControl'
-import { errorMessage } from '../../lib/api'
 import { dueInfo } from '../../lib/format'
 import { DISTRICT_COLORS, missionLabel } from '../../lib/game'
-import { taskStatus, type MyTask } from '../../lib/types'
+import { taskStatus } from '../../lib/types'
 import { useCustomer } from './customerContext'
 import { NoPlan } from './NoPlan'
 
 export function LevelPage() {
   const { chapterId } = useParams()
-  const { me, plan, updateTask, look } = useCustomer()
+  const { me, plan, look } = useCustomer()
   const navigate = useNavigate()
-  const [busyTask, setBusyTask] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
 
   if (!plan) return <NoPlan name={me.name} />
   const index = plan.chapters.findIndex((c) => c.id === chapterId)
@@ -49,18 +46,6 @@ export function LevelPage() {
 
   const percent = chapter.tasks.length ? Math.round((chapter.completedCount / chapter.tasks.length) * 100) : 100
   const next = plan.chapters[index + 1]
-
-  const quickAction = async (task: MyTask) => {
-    setBusyTask(task.id)
-    setError(null)
-    try {
-      await updateTask(task.id, task.started ? 'completed' : 'started')
-    } catch (err) {
-      setError(errorMessage(err))
-    } finally {
-      setBusyTask(null)
-    }
-  }
 
   return (
     <div className="cx-level" style={{ '--group': DISTRICT_COLORS[index % DISTRICT_COLORS.length], '--c': DISTRICT_COLORS[index % DISTRICT_COLORS.length] } as CSSProperties}>
@@ -98,14 +83,8 @@ export function LevelPage() {
             <span>{next ? `שלב ${index + 2} נפתח עכשיו.` : 'סיימתם את כל התוכנית.'}</span>
           </div>
           <button type="button" className="btn btn--game" onClick={() => navigate('/map')}>
-            <Icon name="dice" size={18} /> {next ? 'ממשיכים בלוח' : 'ללוח'}
+            <Icon name="map" size={18} /> {next ? 'ממשיכים' : 'למפה'}
           </button>
-        </div>
-      )}
-
-      {error && (
-        <div className="alert alert--error" role="alert">
-          <Icon name="alert" size={18} /> {error}
         </div>
       )}
 
@@ -154,16 +133,12 @@ export function LevelPage() {
                   <StatusPill status={status} />
                   <Icon name="chevronRight" size={18} className="cx-task__chevron" />
                 </Link>
-                {!task.completed && (
-                  <button
-                    type="button"
-                    className="btn btn--sm cx-task__action"
-                    disabled={busyTask === task.id}
-                    onClick={() => void quickAction(task)}
-                  >
-                    {busyTask === task.id ? <span className="spinner" /> : <Icon name={task.started ? 'check' : 'play'} size={14} />}
-                    {task.started ? 'סימון כבוצע' : 'התחלה'}
-                  </button>
+                {!task.completed && task.flow.steps.length > 0 && (
+                  <span className="cx-task__steps" aria-label={`${task.flow.doneCount} מתוך ${task.flow.steps.length} צעדים`}>
+                    {task.flow.steps.map((s) => (
+                      <i key={s.key} className={`is-${s.state}`} title={s.label} />
+                    ))}
+                  </span>
                 )}
               </li>
             )

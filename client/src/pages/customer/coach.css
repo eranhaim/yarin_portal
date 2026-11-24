@@ -1,0 +1,572 @@
+/* The training room and the coach sessions. */
+
+.coaches {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.coaches__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  align-items: start;
+  gap: 16px;
+}
+
+.coach-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px;
+  border: 1px solid var(--line-c);
+  border-top: 3px solid var(--c);
+  border-radius: 18px;
+  background: var(--panel);
+}
+
+.coach-card header {
+  display: flex;
+  gap: 14px;
+}
+
+.coach-card__icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--c) 18%, transparent);
+  color: var(--c);
+}
+
+.coach-card h2 {
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.coach-card header p {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.coach-card__commit {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(240, 184, 74, 0.1);
+  font-size: 0.92rem;
+}
+
+.coach-card__commit svg {
+  flex-shrink: 0;
+  color: var(--gold);
+}
+
+.coach-card__commit span {
+  flex: 1;
+}
+
+.coach-card__commit small {
+  color: var(--text-muted);
+}
+
+.coach-card__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.coach-card__progress ul {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.coach-card__progress li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 84px 30px;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.88rem;
+}
+
+.coach-card__progress i,
+.evaluation__area-head i {
+  height: 6px;
+  border-radius: 99px;
+  background: linear-gradient(to left, var(--c) var(--p), rgba(255, 255, 255, 0.1) var(--p));
+}
+
+.coach-card__progress b {
+  font-variant-numeric: tabular-nums;
+}
+
+.trend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.trend svg {
+  width: 120px;
+  height: 34px;
+}
+
+.trend polyline {
+  fill: none;
+  stroke: var(--c);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.trend circle {
+  fill: var(--c);
+  stroke: #131820;
+  stroke-width: 2;
+}
+
+.coach-card__modes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.coach-card__modes button {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-c);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.coach-card__modes button:hover:not(:disabled) {
+  border-color: var(--c);
+  background: color-mix(in srgb, var(--c) 10%, transparent);
+}
+
+.coach-card__modes strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.coach-card__modes small {
+  color: var(--text-muted);
+}
+
+.coach-card__closed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+}
+
+.coach-card__memory {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.coach-card__memory summary {
+  cursor: pointer;
+}
+
+.coach-card__memory ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.coach-card__memory li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+}
+
+.coach-card__memory span {
+  flex: 1;
+}
+
+.session-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.session-list a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 8px;
+  border-radius: 12px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.session-list a:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.session-list svg {
+  color: var(--c);
+}
+
+.session-list span {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.session-list small {
+  color: var(--text-muted);
+}
+
+.session-list b {
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Dialogs ---------- */
+
+.setup {
+  position: fixed;
+  z-index: 70;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(6, 8, 12, 0.72);
+  animation: fade-in 0.2s ease both;
+}
+
+.setup__card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(560px, 100%);
+  max-height: 86vh;
+  padding: 24px;
+  overflow: auto;
+  border: 1px solid var(--line-strong);
+  border-radius: 20px;
+  background: #171d26;
+}
+
+.setup__card h2 {
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.setup__card h3 {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.setup__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.setup__options button {
+  padding: 9px 15px;
+  border: 1px solid var(--line-strong);
+  border-radius: 99px;
+  background: none;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.setup__options button[aria-checked='true'] {
+  border-color: var(--gold);
+  background: rgba(240, 184, 74, 0.16);
+}
+
+.setup__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.work-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.work-picker button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid var(--line-c);
+  border-radius: 12px;
+  background: none;
+  color: #fff;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.work-picker button[aria-pressed='true'] {
+  border-color: var(--learn);
+  background: rgba(106, 170, 244, 0.14);
+}
+
+/* ---------- A session ---------- */
+
+.coach-chat {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.coach-chat .cx-back {
+  align-self: flex-start;
+}
+
+.coach-chat__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.coach-chat__head > div {
+  flex: 1;
+  min-width: 180px;
+}
+
+.coach-chat__head h1 {
+  font-family: var(--font-ui);
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.coach-chat__head p,
+.coach-chat__hint {
+  color: var(--text-muted);
+}
+
+.coach-chat__hint {
+  margin-bottom: 14px;
+}
+
+.chat--coach {
+  min-height: 30vh;
+}
+
+.composer {
+  position: sticky;
+  bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 18px;
+  background: rgba(19, 24, 32, 0.96);
+  box-shadow: 0 18px 44px -18px rgba(0, 0, 0, 0.9);
+}
+
+.cx .composer .textarea {
+  border: 0;
+  background: transparent;
+  resize: none;
+}
+
+.cx .composer .textarea:focus {
+  box-shadow: none;
+}
+
+.composer__bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.composer__bar .btn--game {
+  margin-inline-start: auto;
+}
+
+.composer__files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.composer__files > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 260px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 0.85rem;
+}
+
+.composer__files button {
+  display: grid;
+  padding: 2px;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.evaluation {
+  --c: var(--gold);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.evaluation header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.evaluation h2 {
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.evaluation__score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 84px;
+}
+
+.evaluation__score b {
+  color: var(--gold);
+  font-size: 2.8rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.evaluation__score small,
+.evaluation__areas small,
+.evaluation__next small {
+  color: var(--text-muted);
+}
+
+.evaluation__areas {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.evaluation__areas li {
+  padding-top: 12px;
+  border-top: 1px solid var(--line-c);
+}
+
+.evaluation__area-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px 34px;
+  align-items: center;
+  gap: 12px;
+}
+
+.evaluation__area-head b {
+  font-variant-numeric: tabular-nums;
+}
+
+.evaluation__areas q {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-muted);
+  quotes: '„' '”';
+}
+
+.evaluation__areas p {
+  margin-top: 4px;
+}
+
+.evaluation__card summary {
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.evaluation__card dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 14px;
+  margin: 10px 0 0;
+}
+
+.evaluation__card dt {
+  color: var(--text-muted);
+}
+
+.evaluation__card dd {
+  margin: 0;
+}
+
+.evaluation__next {
+  display: flex;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(240, 184, 74, 0.1);
+}
+
+.evaluation__next svg {
+  flex-shrink: 0;
+  margin-top: 4px;
+  color: var(--gold);
+}
+
+.evaluation__next span {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 760px) {
+  .composer {
+    bottom: 74px;
+  }
+}

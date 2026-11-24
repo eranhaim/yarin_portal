@@ -1,58 +1,42 @@
-import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
-import { Icon, type IconName } from '../../components/Icon'
+import { useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { Link, useNavigate } from 'react-router'
+import { Icon } from '../../components/Icon'
 import { api, errorMessage } from '../../lib/api'
 import { formatDateTime } from '../../lib/format'
-import { COACH_TITLES } from '../../lib/game'
-import type { CoachPersona, CoachSession, CoachSessionItem } from '../../lib/types'
-import { useCustomer } from './customerContext'
+import { COACH_META } from '../../lib/game'
+import type { CoachInfo, CoachModeInfo, CoachPersona, CoachSession, CoachSessionItem } from '../../lib/types'
+import './coach.css'
 
-// The AI coaches: a sales simulator (the bot plays a client), a script simulator and a mental coach.
+// The training room: three coaches. Each one shows the progress by skill area, what it remembers, the open
+// commitments, and the ways to train. A coach that did not pass its quality tests is closed.
 
-const PERSONAS: Record<CoachPersona, { title: string; tagline: string; description: string; icon: IconName; color: string; scored: boolean }> = {
-  sales: {
-    title: COACH_TITLES.sales,
-    tagline: 'הבוט הוא הלקוח. אתם סוגרים.',
-    description: 'לקוח מציאותי עם התנגדויות אמיתיות: מחיר, זמן, אמון. בסוף מקבלים ציון ומשוב ממאמן מכירות.',
-    icon: 'trophy',
-    color: '#ffd84d',
-    scored: true,
-  },
-  scripts: {
-    title: COACH_TITLES.scripts,
-    tagline: 'איש השיווק שלכם לסרטונים.',
-    description: 'כותבים יחד תסריט לרילס: הוק, גוף וקריאה לפעולה. הבוט מבקר, משכתב ונותן ציון.',
-    icon: 'edit',
-    color: '#b18cff',
-    scored: true,
-  },
-  mental: {
-    title: COACH_TITLES.mental,
-    tagline: 'ביטחון, התמדה, פחד ממכירה.',
-    description: 'שיחה קצרה ומעשית שמסתיימת בצעד אחד קטן להיום. נקודות מנטליות על כל יום שמגיעים.',
-    icon: 'gauge',
-    color: '#2fe0b0',
-    scored: false,
-  },
-}
+type Option = { key: string; label: string }
+type CoachData = { coaches: CoachInfo[]; scenarios: Option[]; difficulties: Option[]; sessions: CoachSessionItem[] }
 
 export function CoachesPage() {
   const navigate = useNavigate()
-  const [sessions, setSessions] = useState<CoachSessionItem[] | null>(null)
-  const [busy, setBusy] = useState<CoachPersona | null>(null)
+  const [data, setData] = useState<CoachData | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [setup, setSetup] = useState<{ persona: CoachPersona; mode: CoachModeInfo } | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    api<{ sessions: CoachSessionItem[] }>('/me/coach')
-      .then((res) => setSessions(res.sessions))
+  const load = useCallback(() => {
+    api<CoachData>('/me/coach')
+      .then(setData)
       .catch((err) => setError(errorMessage(err)))
   }, [])
 
-  const start = async (persona: CoachPersona) => {
-    setBusy(persona)
+  useEffect(load, [load])
+
+  const start = async (persona: CoachPersona, mode: CoachModeInfo, scenario?: string, difficulty?: string) => {
+    if (mode.roleplay && !scenario) {
+      setSetup({ persona, mode })
+      return
+    }
+    setBusy(`${persona}:${mode.key}`)
     setError(null)
     try {
-      const res = await api<{ session: CoachSession }>('/me/coach', { body: { persona } })
+      const res = await api<{ session: CoachSession }>('/me/coach', { body: { persona, mode: mode.key, scenario, difficulty } })
       navigate(`/coach/${res.session.id}`)
     } catch (err) {
       setError(errorMessage(err))
@@ -60,97 +44,10 @@ export function CoachesPage() {
     }
   }
 
-  return (
-    <div className="coaches-page">
-      <header className="page-head">
-        <span className="gta-eyebrow">חדר האימונים</span>
-        <h1 className="gta-title">המאמנים</h1>
-        <p>מתאמנים מול בוטים שמכירים את העסק שלכם, וצוברים נקודות סקיל.</p>
-      </header>
-
-      {error && (
-        <div className="alert alert--error" role="alert">
-          <Icon name="alert" size={18} /> {error}
-        </div>
-      )}
-
-      <ul className="coach-cards">
-        {(Object.keys(PERSONAS) as CoachPersona[]).map((key, i) => {
-          const p = PERSONAS[key]
-          return (
-            <li key={key} className="coach-card" style={{ '--c': p.color, animationDelay: `${i * 90}ms` } as CSSProperties}>
-              <span className="coach-card__icon">
-                <Icon name={p.icon} size={30} />
-              </span>
-              <h2>{p.title}</h2>
-              <strong>{p.tagline}</strong>
-              <p>{p.description}</p>
-              <button type="button" className="btn btn--game" onClick={() => void start(key)} disabled={busy !== null}>
-                {busy === key ? <span className="spinner" /> : <Icon name="play" size={18} />}
-                {busy === key ? 'מכינים…' : 'מתחילים'}
-              </button>
-            </li>
-          )
-        })}
-      </ul>
-
-      <section className="panel">
-        <h2 className="panel__title">
-          <Icon name="clock" size={18} /> אימונים קודמים
-        </h2>
-        {sessions === null ? (
-          <span className="spinner" />
-        ) : sessions.length === 0 ? (
-          <p className="empty-note">עוד לא התאמנתם. בחרו מאמן למעלה.</p>
-        ) : (
-          <ul className="session-list">
-            {sessions.map((s) => (
-              <li key={s.id}>
-                <Link to={`/coach/${s.id}`} style={{ '--c': PERSONAS[s.persona].color } as CSSProperties}>
-                  <Icon name={PERSONAS[s.persona].icon} size={18} />
-                  <span>
-                    <strong>{s.title}</strong>
-                    <small>
-                      {formatDateTime(s.updatedAt)} · {s.turns} הודעות
-                    </small>
-                  </span>
-                  {s.score !== null && <b className="session-list__score">{s.score}</b>}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </div>
-  )
-}
-
-export function CoachChatPage() {
-  const { id } = useParams()
-  const { refreshGame } = useCustomer()
-  const [session, setSession] = useState<CoachSession | null>(null)
-  const [text, setText] = useState('')
-  const [busy, setBusy] = useState<'send' | 'score' | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const end = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    api<{ session: CoachSession }>(`/me/coach/${id}`)
-      .then((res) => setSession(res.session))
-      .catch((err) => setError(errorMessage(err)))
-  }, [id])
-
-  useEffect(() => {
-    end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [session?.messages.length, busy])
-
-  if (!session) {
+  if (!data) {
     return error ? (
       <div className="cx-empty">
         <h2>{error}</h2>
-        <Link to="/coach" className="btn btn--game">
-          למאמנים
-        </Link>
       </div>
     ) : (
       <div className="page-loader">
@@ -159,118 +56,13 @@ export function CoachChatPage() {
     )
   }
 
-  const persona = PERSONAS[session.persona]
-
-  const send = async (e: FormEvent) => {
-    e.preventDefault()
-    const message = text.trim()
-    if (!message) return
-    setBusy('send')
-    setError(null)
-    // Show the message right away; the reply follows.
-    setSession({ ...session, messages: [...session.messages, { role: 'user', text: message, at: new Date().toISOString() }] })
-    setText('')
-    try {
-      const res = await api<{ session: CoachSession }>(`/me/coach/${session.id}/message`, { body: { text: message } })
-      setSession(res.session)
-      if (session.persona === 'mental') void refreshGame()
-    } catch (err) {
-      setError(errorMessage(err))
-      setSession(session)
-      setText(message)
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  const score = async () => {
-    setBusy('score')
-    setError(null)
-    try {
-      const res = await api<{ session: CoachSession }>(`/me/coach/${session.id}/evaluate`, { method: 'POST' })
-      setSession(res.session)
-      void refreshGame()
-    } catch (err) {
-      setError(errorMessage(err))
-    } finally {
-      setBusy(null)
-    }
-  }
-
   return (
-    <div className="coach-chat" style={{ '--c': persona.color } as CSSProperties}>
-      <Link to="/coach" className="cx-back">
-        <Icon name="arrowLeft" size={18} /> המאמנים
-      </Link>
-      <header className="coach-chat__head">
-        <span className="coach-card__icon">
-          <Icon name={persona.icon} size={24} />
-        </span>
-        <div>
-          <h1>{persona.title}</h1>
-          <p>{persona.tagline}</p>
-        </div>
-        {persona.scored && (
-          <button type="button" className="btn btn--game" onClick={() => void score()} disabled={busy !== null}>
-            {busy === 'score' ? <span className="spinner" /> : <Icon name="trophy" size={18} />}
-            {session.evaluation ? 'ציון מחדש' : 'סיום וקבלת ציון'}
-          </button>
-        )}
+    <div className="coaches">
+      <header className="page-head">
+        <span className="gta-eyebrow">חדר האימונים</span>
+        <h1 className="gta-title">המאמנים</h1>
+        <p>הם מכירים את העסק שלכם, מלמדים את השיטה של ירין ואורן, ובודקים עבודה אמיתית.</p>
       </header>
-
-      <div className="chat chat--coach" aria-live="polite">
-        {session.messages.map((m, i) => (
-          <div key={i} className={`chat__msg chat__msg--${m.role}`}>
-            {m.role === 'assistant' && <span className="chat__who">{session.persona === 'sales' ? 'הלקוח' : persona.title}</span>}
-            <p>{m.text}</p>
-          </div>
-        ))}
-        {busy === 'send' && (
-          <div className="chat__msg chat__msg--assistant chat__typing" aria-label="כותבים">
-            <i />
-            <i />
-            <i />
-          </div>
-        )}
-        <div ref={end} />
-      </div>
-
-      {session.evaluation && (
-        <section className="panel coach-eval">
-          <div className="coach-eval__score">
-            <b>{session.evaluation.score}</b>
-            <span>/100</span>
-          </div>
-          <div>
-            <p>{session.evaluation.summary}</p>
-            <div className="review__lists">
-              <div>
-                <strong>
-                  <Icon name="check" size={16} /> חזק
-                </strong>
-                <ul>
-                  {session.evaluation.strengths.map((s) => (
-                    <li key={s}>{s}</li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <strong>
-                  <Icon name="edit" size={16} /> לשפר
-                </strong>
-                <ul>
-                  {session.evaluation.improvements.map((s) => (
-                    <li key={s}>{s}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-            <p className="coach-eval__next">
-              <Icon name="flag" size={16} /> התרגיל הבא: {session.evaluation.nextStep}
-            </p>
-          </div>
-        </section>
-      )}
 
       {error && (
         <div className="alert alert--error" role="alert">
@@ -278,24 +70,188 @@ export function CoachChatPage() {
         </div>
       )}
 
-      <form className="chat__form" onSubmit={(e) => void send(e)}>
-        <textarea
-          className="textarea"
-          rows={2}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={session.persona === 'sales' ? 'מה עונים ללקוח?' : 'כתבו הודעה…'}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              void send(e)
-            }
-          }}
+      <div className="coaches__grid">
+        {data.coaches.map((coach) => (
+          <CoachCard key={coach.persona} coach={coach} busy={busy} onStart={(mode) => void start(coach.persona, mode)} onChanged={load} />
+        ))}
+      </div>
+
+      {setup && (
+        <SimulationSetup
+          data={data}
+          busy={busy !== null}
+          onClose={() => setSetup(null)}
+          onStart={(scenario, difficulty) => void start(setup.persona, setup.mode, scenario, difficulty)}
         />
-        <button type="submit" className="btn btn--game" disabled={busy !== null || !text.trim()}>
-          <Icon name="arrowLeft" size={18} /> שליחה
-        </button>
-      </form>
+      )}
+
+      {data.sessions.length > 0 && (
+        <section className="panel">
+          <h2 className="panel__title">
+            <Icon name="clock" size={18} /> אימונים קודמים
+          </h2>
+          <ul className="session-list">
+            {data.sessions.map((s) => (
+              <li key={s.id}>
+                <Link to={`/coach/${s.id}`} style={{ '--c': COACH_META[s.persona].color } as CSSProperties}>
+                  <Icon name={COACH_META[s.persona].icon} size={18} />
+                  <span>
+                    <strong>{s.title}</strong>
+                    <small>
+                      {formatDateTime(s.updatedAt)} · {s.turns} הודעות
+                    </small>
+                  </span>
+                  {s.score !== null && <b>{s.score}</b>}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  )
+}
+
+function CoachCard({ coach, busy, onStart, onChanged }: { coach: CoachInfo; busy: string | null; onStart: (mode: CoachModeInfo) => void; onChanged: () => void }) {
+  const meta = COACH_META[coach.persona]
+  const open = coach.commitments.filter((c) => !c.done).at(-1)
+  const trained = coach.dimensions.some((d) => d.score !== null)
+
+  const finish = async (id: string) => {
+    await api(`/me/coach-memory/${coach.persona}/commitments/${id}`, { method: 'PATCH', body: { done: true } }).catch(() => undefined)
+    onChanged()
+  }
+  const forget = async (id: string) => {
+    await api(`/me/coach-memory/${coach.persona}/notes/${id}`, { method: 'DELETE' }).catch(() => undefined)
+    onChanged()
+  }
+
+  return (
+    <article className={`coach-card${coach.available ? '' : ' is-closed'}`} style={{ '--c': meta.color } as CSSProperties}>
+      <header>
+        <span className="coach-card__icon">
+          <Icon name={meta.icon} size={24} />
+        </span>
+        <div>
+          <h2>{coach.title}</h2>
+          <p>{meta.tagline}</p>
+        </div>
+      </header>
+
+      {open && (
+        <div className="coach-card__commit">
+          <Icon name="flag" size={16} />
+          <span>
+            <small>סיכמתם:</small> {open.text}
+          </span>
+          <button type="button" className="btn btn--sm btn--ghost-light" onClick={() => void finish(open.id)}>
+            עשיתי
+          </button>
+        </div>
+      )}
+
+      {trained && (
+        <div className="coach-card__progress">
+          <ul>
+            {coach.dimensions.map((d) => (
+              <li key={d.key}>
+                <span>{d.label}</span>
+                <i style={{ '--p': `${d.score ?? 0}%` } as CSSProperties} />
+                <b>{d.score ?? '—'}</b>
+              </li>
+            ))}
+          </ul>
+          {coach.scores.length > 1 && <Trend scores={coach.scores.map((s) => s.score)} />}
+        </div>
+      )}
+
+      {coach.available ? (
+        <div className="coach-card__modes">
+          {coach.modes.map((mode) => (
+            <button key={mode.key} type="button" onClick={() => onStart(mode)} disabled={busy !== null}>
+              <strong>
+                {busy === `${coach.persona}:${mode.key}` && <span className="spinner" />} {mode.label}
+              </strong>
+              <small>{mode.description}</small>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="coach-card__closed">
+          <Icon name="shield" size={18} /> המאמן בבדיקות איכות. הוא ייפתח כשיעבור את כולן.
+        </p>
+      )}
+
+      {coach.notes.length > 0 && (
+        <details className="coach-card__memory">
+          <summary>מה המאמן זוכר עליכם ({coach.notes.length})</summary>
+          <ul>
+            {coach.notes.map((n) => (
+              <li key={n.id}>
+                <span>{n.text}</span>
+                <button type="button" className="icon-btn" onClick={() => void forget(n.id)} aria-label="מחיקת השורה" title="מחיקה">
+                  <Icon name="x" size={14} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </article>
+  )
+}
+
+/** Scores of the last sessions, oldest first (drawn right to left, like the text). */
+function Trend({ scores }: { scores: number[] }) {
+  const width = 120
+  const height = 34
+  const x = (i: number) => width - (i / (scores.length - 1)) * (width - 8) - 4
+  const y = (score: number) => height - 5 - (score / 100) * (height - 10)
+  const last = scores.at(-1)!
+  return (
+    <figure className="trend">
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`ציונים באימונים האחרונים: ${scores.join(', ')}`}>
+        <polyline points={scores.map((s, i) => `${x(i)},${y(s)}`).join(' ')} />
+        <circle cx={x(scores.length - 1)} cy={y(last)} r={4} />
+      </svg>
+      <figcaption>
+        {scores[0]} ← {last}
+      </figcaption>
+    </figure>
+  )
+}
+
+function SimulationSetup({ data, busy, onClose, onStart }: { data: CoachData; busy: boolean; onClose: () => void; onStart: (scenario: string, difficulty: string) => void }) {
+  const [scenario, setScenario] = useState(data.scenarios[0]!.key)
+  const [difficulty, setDifficulty] = useState(data.difficulties[1]?.key ?? data.difficulties[0]!.key)
+  return (
+    <div className="setup" role="dialog" aria-modal="true" aria-label="הגדרת הסימולציה" onClick={(e) => e.target === e.currentTarget && !busy && onClose()}>
+      <div className="setup__card">
+        <h2>באיזה מצב מתאמנים?</h2>
+        <div className="setup__options" role="radiogroup" aria-label="המצב">
+          {data.scenarios.map((s) => (
+            <button key={s.key} type="button" role="radio" aria-checked={scenario === s.key} onClick={() => setScenario(s.key)}>
+              {s.label}
+            </button>
+          ))}
+        </div>
+        <h3>כמה קשה?</h3>
+        <div className="setup__options" role="radiogroup" aria-label="רמת הקושי">
+          {data.difficulties.map((d) => (
+            <button key={d.key} type="button" role="radio" aria-checked={difficulty === d.key} onClick={() => setDifficulty(d.key)}>
+              {d.label}
+            </button>
+          ))}
+        </div>
+        <div className="setup__actions">
+          <button type="button" className="btn btn--game btn--lg" disabled={busy} onClick={() => onStart(scenario, difficulty)}>
+            {busy ? <span className="spinner" /> : <Icon name="play" size={18} />} {busy ? 'הלקוח מתכונן…' : 'מתחילים'}
+          </button>
+          <button type="button" className="btn btn--ghost-light" disabled={busy} onClick={onClose}>
+            ביטול
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

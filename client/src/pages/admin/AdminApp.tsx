@@ -10,9 +10,11 @@ import { CustomersPage } from './CustomersPage'
 import { HostsPage } from './HostsPage'
 import { InboxContext, useInboxPolling } from './inbox'
 import { InboxPage } from './InboxPage'
+import { LabPage } from './LabPage'
 import { LeadsPage } from './LeadsPage'
 import { PlanEditorPage } from './PlanEditorPage'
 import { PlansPage } from './PlansPage'
+import { WorksPage } from './WorksPage'
 import './admin.css'
 
 /** undefined = still checking; null = signed out. */
@@ -123,7 +125,7 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
 function AdminShell({ me, onLogout }: { me: AdminIdentity; onLogout: () => void }) {
   const [status, setStatus] = useState<AdminStatus | null>(null)
   const inbox = useInboxPolling()
-  const unread = inbox.summary.unread
+  const unread = inbox.summary.unread + inbox.works.open
   const [newLeads, setNewLeads] = useState(0)
 
   const loadLeads = useCallback(() => {
@@ -164,27 +166,30 @@ function AdminShell({ me, onLogout }: { me: AdminIdentity; onLogout: () => void 
             <NavLink to="/admin/plans" className="adm-top__link">
               <Icon name="layers" size={18} /> תוכניות
             </NavLink>
+            <NavLink
+              to={inbox.works.open > 0 || inbox.summary.unread === 0 ? '/admin/works' : '/admin/inbox'}
+              className={`adm-top__link adm-top__inbox${unread > 0 ? ' has-unread' : ''}`}
+              aria-label={unread > 0 ? `עבודות, ${unread} חדשות` : 'עבודות'}
+            >
+              <Icon name="bell" size={18} /> עבודות
+              {unread > 0 && (
+                <span key={unread} className="adm-top__badge">
+                  {unread > 99 ? '99+' : unread}
+                </span>
+              )}
+            </NavLink>
             <NavLink to="/admin/leads" className="adm-top__link adm-top__inbox" aria-label={newLeads > 0 ? `חבר מביא חבר, ${newLeads} חדשים` : 'חבר מביא חבר'}>
               <Icon name="star" size={18} /> חבר מביא חבר
               {newLeads > 0 && <span className="adm-top__badge">{newLeads > 99 ? '99+' : newLeads}</span>}
+            </NavLink>
+            <NavLink to="/admin/lab" className="adm-top__link">
+              <Icon name="shield" size={18} /> מאמנים
             </NavLink>
             <NavLink to="/admin/hosts" className="adm-top__link">
               <Icon name="sparkles" size={18} /> דמויות
             </NavLink>
             <NavLink to="/admin/admins" className="adm-top__link">
               <Icon name="briefcase" size={18} /> מנהלים
-            </NavLink>
-            <NavLink
-              to="/admin/inbox"
-              className={`adm-top__link adm-top__inbox${unread > 0 ? ' has-unread' : ''}`}
-              aria-label={unread > 0 ? `הגשות, ${unread} חדשות` : 'הגשות'}
-            >
-              <Icon name="bell" size={18} /> הגשות
-              {unread > 0 && (
-                <span key={unread} className="adm-top__badge">
-                  {unread > 99 ? '99+' : unread}
-                </span>
-              )}
             </NavLink>
           </nav>
           {status && (
@@ -214,7 +219,9 @@ function AdminShell({ me, onLogout }: { me: AdminIdentity; onLogout: () => void 
             <Route path="customers/:id" element={<CustomerDetailPage />} />
             <Route path="plans" element={<PlansPage />} />
             <Route path="plans/:id" element={<PlanEditorPage />} />
+            <Route path="works" element={<WorksPage />} />
             <Route path="inbox" element={<InboxPage />} />
+            <Route path="lab" element={<LabPage />} />
             <Route path="leads" element={<LeadsPage onChange={loadLeads} />} />
             <Route path="hosts" element={<HostsPage />} />
             <Route path="admins" element={<AdminsPage me={me} />} />

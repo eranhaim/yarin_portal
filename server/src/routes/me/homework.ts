@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { XP } from '../../game/rules.ts'
 import { award } from '../../game/xp.ts'
 import { parseBody } from '../../http.ts'
-import { setTaskStatus, type CustomerDoc } from '../../models/Customer.ts'
+import type { CustomerDoc } from '../../models/Customer.ts'
 import {
   deleteSubmissions,
   MAX_SUBMISSIONS_PER_TASK,
@@ -14,7 +14,7 @@ import {
 } from '../../models/Submission.ts'
 import { headObject, signedUploadUrl, storageEnabled } from '../../storage.ts'
 import { MAX_UPLOAD_BYTES, safeFileName } from '../../uploads.ts'
-import { customerOf, openTask, planOf, planView, skillOf, syncTaskXp } from './shared.ts'
+import { customerOf, findTask, openTask, planOf, planView, skillOf, syncTask } from './shared.ts'
 
 // Homework uploads:
 //   1. POST /tasks/:taskId/submissions   -> "pending" submission and a signed upload URL
@@ -93,17 +93,10 @@ homeworkRouter.post('/submissions/:id/complete', async (req, res) => {
 
     // Handing in work means the task is under way, and it pays (once per task).
     const taskId = submission.taskId.toString()
-    const plan = await planOf(customer)
-    const task = plan?.chapters.flatMap((c) => c.tasks).find((t) => t._id.toString() === taskId)
-    const entry = customer.taskProgress.find((p) => p.taskId.toString() === taskId)
-    if (!entry?.startedAt) {
-      setTaskStatus(customer, taskId, 'started')
-      await customer.save()
-    }
-    if (task) {
-      const ref = { id: taskId, title: task.title, skill: task.skill }
-      if (!entry?.startedAt) await syncTaskXp(customer._id, ref, 'started')
-      await award(customer._id, { skill: skillOf(ref), points: XP.homework, refKey: `homework:${taskId}`, label: `הגשתם קובץ: ${task.title}` })
+    const found = await findTask(customer, taskId)
+    if (found) {
+      await award(customer._id, { skill: skillOf(found.task), points: XP.homework, refKey: `homework:${taskId}`, label: `הגשתם קובץ: ${found.task.title}` })
+      await syncTask(customer, found.plan, found.task)
     }
   }
   const plan = await planOf(customer)

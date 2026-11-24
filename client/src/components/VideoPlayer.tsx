@@ -12,9 +12,19 @@ type Props = {
   autoPlay?: boolean
   onEnded?: () => void
   downloadUrl?: string | null
+  /** Where to resume, in seconds. */
+  startAt?: number
+  /** Hebrew captions (WebVTT, same origin). */
+  captionsUrl?: string | null
+  /** Called about once a second while the video really plays. */
+  onWatch?: (position: number, duration: number) => void
+  /** Called when playing stops (pause, end), so the position can be saved. */
+  onRest?: () => void
+  /** Change the key to jump to a moment and play. */
+  seek?: { at: number; key: number } | null
 }
 
-export function VideoPlayer({ src, poster, title, autoPlay = false, onEnded, downloadUrl }: Props) {
+export function VideoPlayer({ src, poster, title, autoPlay = false, onEnded, downloadUrl, startAt = 0, captionsUrl, onWatch, onRest, seek }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
@@ -36,7 +46,25 @@ export function VideoPlayer({ src, poster, title, autoPlay = false, onEnded, dow
   const [scrubbing, setScrubbing] = useState(false)
   const [flash, setFlash] = useState<{ icon: 'play' | 'pause' | 'back10' | 'forward10'; key: number } | null>(null)
 
+  const [captions, setCaptions] = useState(false)
+  const lastWatch = useRef(-1)
+
   const video = () => videoRef.current
+
+  // Jump to a moment of the lesson.
+  useEffect(() => {
+    const v = videoRef.current
+    if (!seek || !v) return
+    v.currentTime = seek.at
+    setStarted(true)
+    void v.play().catch(() => undefined)
+  }, [seek])
+
+  // Captions are a text track of the video; the browser draws them.
+  useEffect(() => {
+    const track = videoRef.current?.textTracks[0]
+    if (track) track.mode = captions ? 'showing' : 'hidden'
+  }, [captions, captionsUrl])
 
   const toggle = useCallback(() => {
     const v = videoRef.current
@@ -187,12 +215,27 @@ export function VideoPlayer({ src, poster, title, autoPlay = false, onEnded, dow
           setStarted(true)
           wake()
         }}
-        onPause={() => setPlaying(false)}
+        onPause={() => {
+          setPlaying(false)
+          onRest?.()
+        }}
         onEnded={() => {
           setPlaying(false)
+          onRest?.()
           onEnded?.()
         }}
-        onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
+        onLoadedMetadata={(e) => {
+          // Resume, unless the video was almost over.
+          if (startAt > 5 && startAt < e.currentTarget.duration - 15) e.currentTarget.currentTime = startAt
+        }}
+        onTimeUpdate={(e) => {
+          const v = e.currentTarget
+          setTime(v.currentTime)
+          if (!v.paused && !v.seeking && Math.abs(v.currentTime - lastWatch.current) >= 1) {
+            lastWatch.current = v.currentTime
+            onWatch?.(v.currentTime, v.duration || 0)
+          }
+        }}
         onDurationChange={(e) => setDuration(Number.isFinite(e.currentTarget.duration) ? e.currentTarget.duration : 0)}
         onProgress={(e) => {
           const b = e.currentTarget.buffered
@@ -207,7 +250,9 @@ export function VideoPlayer({ src, poster, title, autoPlay = false, onEnded, dow
         }}
         onRateChange={(e) => setRate(e.currentTarget.playbackRate)}
         onError={() => setFailed(true)}
-      />
+      >
+        {captionsUrl && <track kind="captions" srcLang="he" label="עברית" src={captionsUrl} />}
+      </video>
 
       {/* Start screen */}
       {!started && !failed && (
@@ -315,6 +360,11 @@ export function VideoPlayer({ src, poster, title, autoPlay = false, onEnded, dow
             <button type="button" className="vp__btn vp__btn--rate" onClick={cycleRate} aria-label={`מהירות ניגון ${rate}x`}>
               {rate}×
             </button>
+            {captionsUrl && (
+              <button type="button" className={`vp__btn${captions ? ' is-on' : ''}`} onClick={() => setCaptions((v) => !v)} aria-pressed={captions} aria-label="כתוביות">
+                <Icon name="captions" size={21} />
+              </button>
+            )}
             {pipSupported && (
               <button type="button" className="vp__btn" onClick={() => void togglePip()} aria-label="תמונה בתוך תמונה">
                 <Icon name="pip" size={20} />

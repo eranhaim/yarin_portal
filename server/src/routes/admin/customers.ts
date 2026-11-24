@@ -3,6 +3,7 @@ import express, { Router, type Response } from 'express'
 import { isValidObjectId } from 'mongoose'
 import { z } from 'zod'
 import { hashPassword } from '../../auth/password.ts'
+import { BOTTLENECK_KEYS, STAGE_KEYS, TRACK_KEYS } from '../../game/tracks.ts'
 import { parseBody } from '../../http.ts'
 import { Customer, setTaskStatus, toAdminView, type CustomerDoc } from '../../models/Customer.ts'
 import { deleteGameData } from '../../models/Game.ts'
@@ -103,6 +104,28 @@ customersRouter.delete('/:id', async (req, res) => {
   res.json({ ok: true })
 })
 
+// ---------- The personal route ----------
+
+const routeSchema = z.object({ track: z.enum(TRACK_KEYS).nullable(), stage: z.enum(STAGE_KEYS).nullable(), bottleneck: z.enum(BOTTLENECK_KEYS).nullable() })
+
+/** An admin's choice wins over later diagnoses; track = null gives the route back to the diagnosis. */
+customersRouter.put('/:id/route', async (req, res) => {
+  const body = parseBody(routeSchema, req, res)
+  if (!body) return
+  const customer = await findCustomer(req.params.id, res)
+  if (!customer) return
+  customer.track = body.track
+  customer.stage = body.stage
+  customer.bottleneck = body.bottleneck
+  customer.routeBy = body.track ? 'admin' : null
+  await customer.save()
+  const plan = await planOf(customer)
+  res.json({
+    customer: await toAdminView(customer, plan),
+    plan: plan ? toPlanProgressView(plan, customer.planAssignedAt, customer) : null,
+  })
+})
+
 // ---------- Avatar ----------
 // The browser crops and resizes the image, then sends the bytes as the request body.
 
@@ -147,7 +170,7 @@ customersRouter.get('/:id/plan', async (req, res) => {
   const customer = await findCustomer(req.params.id, res)
   if (!customer) return
   const plan = await planOf(customer)
-  res.json({ plan: plan ? toPlanProgressView(plan, customer.planAssignedAt, customer.taskProgress) : null })
+  res.json({ plan: plan ? toPlanProgressView(plan, customer.planAssignedAt, customer) : null })
 })
 
 // Assign a plan (or null to remove it). A different plan starts with fresh progress.
@@ -172,7 +195,7 @@ customersRouter.put('/:id/plan', async (req, res) => {
 
   res.json({
     customer: await toAdminView(customer, plan),
-    plan: plan ? toPlanProgressView(plan, customer.planAssignedAt, customer.taskProgress) : null,
+    plan: plan ? toPlanProgressView(plan, customer.planAssignedAt, customer) : null,
   })
 })
 
@@ -192,5 +215,5 @@ customersRouter.patch('/:id/plan/tasks/:taskId', async (req, res) => {
   setTaskStatus(customer, req.params.taskId, body.status)
   await customer.save()
 
-  res.json({ plan: toPlanProgressView(plan, customer.planAssignedAt, customer.taskProgress) })
+  res.json({ plan: toPlanProgressView(plan, customer.planAssignedAt, customer) })
 })

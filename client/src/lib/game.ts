@@ -1,11 +1,29 @@
 import type { IconName } from '../components/Icon'
-import type { CoachPersona, LeadStatus, Look, SkillKey } from './types'
+import type { CoachPersona, LeadStatus, Look, SkillKey, StepKey } from './types'
 
 export const COACH_TITLES: Record<CoachPersona, string> = {
   sales: 'סימולטור מכירות',
-  scripts: 'סימולטור תסריטים',
+  scripts: 'מאמן תסריטים',
   mental: 'מאמן מנטלי',
 }
+
+export const COACH_META: Record<CoachPersona, { icon: IconName; color: string; tagline: string }> = {
+  sales: { icon: 'phone', color: '#e6b04a', tagline: 'מתאמנים על שיחות אמיתיות, עם לקוח שמתנגד כמו בחיים.' },
+  scripts: { icon: 'edit', color: '#9aa7f0', tagline: 'מרעיון לתסריט מוכן לצילום, ובדיקה של סרטונים אמיתיים.' },
+  mental: { icon: 'gauge', color: '#6fc3b2', tagline: 'ביטחון, התמדה ופחד ממכירה. כל שיחה נגמרת בצעד קטן.' },
+}
+
+export const STEP_ICON: Record<StepKey, IconName> = { watch: 'video', quiz: 'bulb', practice: 'edit', files: 'upload', check: 'sparkles' }
+
+/** The ladder of monthly income up to "the boss" (the business metric; mirrors the server). */
+export const RANKS = [
+  { label: 'טירון', min: 0 },
+  { label: 'שחקן', min: 10_000 },
+  { label: 'יזם', min: 25_000 },
+  { label: 'טייקון', min: 50_000 },
+  { label: 'מוגול', min: 75_000 },
+  { label: 'הבוס', min: 100_000 },
+]
 
 /** How a referred friend's status reads, to the customer who referred them. */
 export const LEAD_STATUS_LABEL: Record<LeadStatus, string> = { new: 'נרשם/ה', contacted: 'בשיחה', joined: 'הצטרף/ה!', lost: 'לא הפעם' }
@@ -25,8 +43,8 @@ export const SKILL_META: Record<SkillKey, { label: string; icon: IconName; color
   mindset: { label: 'מנטליות', icon: 'gauge', color: '#9fd8ff' },
 }
 
-/** Neon colors of the city districts (plan levels), in order. */
-export const DISTRICT_COLORS = ['#ff4fa3', '#2fe0b0', '#ffc93c', '#b18cff', '#4fb3ff', '#ff8a3c', '#7dff6a', '#ff5470']
+/** Colors of the city districts (plan levels), in order. */
+export const DISTRICT_COLORS = ['#e6b04a', '#4fb6c9', '#d97b6c', '#8f9df0', '#63b98a', '#d39ad1', '#c9c05b', '#7fb0e8']
 
 export const formatShekels = (value: number) => `₪${Math.round(value).toLocaleString('he-IL')}`
 
@@ -34,6 +52,23 @@ export const formatShekels = (value: number) => `₪${Math.round(value).toLocale
 export function monthLabel(month: string): string {
   const [year, m] = month.split('-').map(Number)
   return new Intl.DateTimeFormat('he-IL', { month: 'long', year: 'numeric' }).format(new Date(year!, (m ?? 1) - 1, 1))
+}
+
+/** "2026-11" -> "נוב׳ 26" */
+export function monthShort(month: string): string {
+  const [year, m] = month.split('-').map(Number)
+  return new Intl.DateTimeFormat('he-IL', { month: 'short', year: '2-digit' }).format(new Date(year!, (m ?? 1) - 1, 1))
+}
+
+export const percent = (value: number | null) => (value === null ? '—' : `${Math.round(value * 100)}%`)
+
+/** 75 -> "שעה ו-15 דק׳" */
+export function minutesLabel(minutes: number): string {
+  if (minutes < 60) return `${minutes} דק׳`
+  const hours = Math.floor(minutes / 60)
+  const rest = minutes % 60
+  const base = hours === 1 ? 'שעה' : hours === 2 ? 'שעתיים' : `${hours} שעות`
+  return rest ? `${base} ו-${rest} דק׳` : base
 }
 
 export function currentMonth(): string {

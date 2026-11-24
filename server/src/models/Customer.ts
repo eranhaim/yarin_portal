@@ -29,7 +29,14 @@ const customerSchema = new Schema(
     // The customer's game character (see game/content.ts, lookSchema). null = the default look.
     look: { type: Schema.Types.Mixed, default: null },
     // Code in the customer's "bring a friend" link.
-    referralCode: { type: String, default: null, index: { unique: true, sparse: true } },
+    // No default: a sparse unique index skips only missing values, and two nulls would collide.
+    referralCode: { type: String, index: { unique: true, sparse: true } },
+
+    // The personal route (see game/tracks.ts). The first diagnosis sets it; an admin can change it.
+    track: { type: String, default: null },
+    stage: { type: String, default: null },
+    bottleneck: { type: String, default: null },
+    routeBy: { type: String, enum: ['diagnosis', 'admin', null], default: null },
 
     planId: { type: Schema.Types.ObjectId, ref: 'Plan', default: null, index: true },
     planAssignedAt: { type: Date, default: null },
@@ -71,17 +78,18 @@ export async function toAdminView(c: CustomerDoc, plan: PlanDoc | null) {
     active: c.active,
     lastLoginAt: c.lastLoginAt,
     createdAt: c.createdAt,
+    route: { track: c.track ?? null, stage: c.stage ?? null, bottleneck: c.bottleneck ?? null, by: c.routeBy ?? null },
     plan: plan ? planSummary(c, plan) : null,
   }
 }
 
 function planSummary(c: CustomerDoc, plan: PlanDoc) {
-  const level = levelState(plan, c.taskProgress)
+  const level = levelState(plan, c)
   return {
     id: plan.id as string,
     title: plan.title,
     assignedAt: c.planAssignedAt,
-    ...progressSummary(plan, c.taskProgress),
+    ...progressSummary(plan, c),
     level: { index: level.index, position: level.position, total: level.total, finished: level.finished, title: level.title },
   }
 }

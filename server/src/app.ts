@@ -16,7 +16,9 @@ export const app = express()
 app.set('trust proxy', isProduction ? 'loopback, linklocal, uniquelocal' : false)
 
 app.use(helmet())
-app.use(express.json({ limit: '100kb' }))
+// Admins send lesson transcripts and slides; everyone else sends short forms.
+app.use('/api/admin', express.json({ limit: '2mb' }))
+app.use(express.json({ limit: '300kb' }))
 app.use(cookieParser())
 
 app.use('/api/health', healthRouter)

@@ -23,6 +23,23 @@ const fallback = (): { betas: Anthropic.Beta.AnthropicBeta[]; fallbacks: 'defaul
 
 type Effort = 'low' | 'medium' | 'high'
 
+/** Content of a message: text, images and PDF documents. */
+export type AiContent = Anthropic.Beta.BetaContentBlockParam[]
+export type AiMessage = Anthropic.Beta.BetaMessageParam
+
+/**
+ * A system prompt in parts. Parts that repeat between requests (the playbook, the lessons) come first
+ * with cache: true, so a conversation reads them from the prompt cache; the customer's own data follows.
+ */
+export type SystemPart = { text: string; cache?: boolean }
+
+function systemBlocks(system: string | SystemPart[]): string | Anthropic.Beta.BetaTextBlockParam[] {
+  if (typeof system === 'string') return system
+  return system
+    .filter((part) => part.text.trim())
+    .map((part) => ({ type: 'text', text: part.text, ...(part.cache ? { cache_control: { type: 'ephemeral' as const } } : {}) }))
+}
+
 export class AiError extends Error {
   status: number
   constructor(status: number, message: string) {
@@ -54,8 +71,8 @@ function translateError(err: unknown): never {
 
 export async function aiJson<S extends z.ZodType>(options: {
   schema: S
-  system: string
-  messages: Anthropic.Beta.BetaMessageParam[]
+  system: string | SystemPart[]
+  messages: AiMessage[]
   effort: Effort
   maxTokens?: number
 }): Promise<z.infer<S>> {
@@ -65,7 +82,7 @@ export async function aiJson<S extends z.ZodType>(options: {
       model: env.AI_MODEL,
       max_tokens: options.maxTokens ?? 16000,
       ...fallback(),
-      system: options.system,
+      system: systemBlocks(options.system),
       messages: options.messages,
       output_config: { format: betaZodOutputFormat(options.schema), effort: options.effort },
     })
@@ -78,8 +95,8 @@ export async function aiJson<S extends z.ZodType>(options: {
 }
 
 export async function aiText(options: {
-  system: string
-  messages: Anthropic.Beta.BetaMessageParam[]
+  system: string | SystemPart[]
+  messages: AiMessage[]
   effort: Effort
   maxTokens?: number
 }): Promise<string> {
@@ -89,7 +106,7 @@ export async function aiText(options: {
       model: env.AI_MODEL,
       max_tokens: options.maxTokens ?? 4000,
       ...fallback(),
-      system: options.system,
+      system: systemBlocks(options.system),
       messages: options.messages,
       output_config: { effort: options.effort },
     })

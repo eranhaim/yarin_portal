@@ -1,9 +1,15 @@
 import { env } from './env.ts'
 import { app } from './app.ts'
+import { closeStaleRuns } from './ai/lab/run.ts'
+import { warmUpSpeech } from './ai/media.ts'
 import { connectDb, disconnectDb } from './db.ts'
+import { migrate } from './migrate.ts'
 import { storageEnabled } from './storage.ts'
 
 await connectDb()
+await migrate()
+await closeStaleRuns()
+warmUpSpeech()
 
 const server = app.listen(env.PORT, () => {
   console.log(`API listening on port ${env.PORT} (${env.NODE_ENV})`)

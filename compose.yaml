@@ -32,6 +32,12 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       AI_MODEL: ${AI_MODEL:-claude-opus-5-5}
       AI_DAILY_LIMIT: ${AI_DAILY_LIMIT:-120}
+    # Speech recognition is heavy and the server is shared: the API gets a limit, and one recording runs at a time.
+    mem_limit: 3g
+    cpus: 1.5
+    volumes:
+      # The Hebrew speech model (downloads once, about 1.6 GB, kept as about 0.6 GB).
+      - speech-model:/models
     # No published ports: only the web container reaches the API.
 
   web:
@@ -44,3 +50,6 @@ services:
     ports:
       # Local only. Docker bypasses the host firewall, so never publish on 0.0.0.0.
       - "127.0.0.1:${WEB_PORT:-8096}:80"
+
+volumes:
+  speech-model:

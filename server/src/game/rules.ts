@@ -1,4 +1,5 @@
-// The game: skills, levels, ranks (monthly revenue up to "the boss") and the prize pyramid.
+// The game: learning points and skill levels, business ranks (monthly revenue up to "the boss") and prizes.
+// Learning points never come from business results or referrals: the two metrics stay apart.
 // Labels are Hebrew because the whole product is Hebrew; the client adds icons and colors.
 
 export const SKILLS = [
@@ -21,6 +22,7 @@ export const isSkill = (value: unknown): value is SkillKey => SKILL_KEYS.include
 /** Points for each action. "max" kinds keep the best result, so trying again only adds the improvement. */
 export const XP = {
   taskStarted: 10,
+  lessonWatched: 20,
   taskCompleted: 60,
   homework: 30,
   worksheet: 40,
@@ -28,8 +30,6 @@ export const XP = {
   quizPerCorrect: 10,
   simulatorMax: 80,
   mentalSession: 15,
-  referralJoined: 200,
-  revenueReport: 20,
   dailyVisit: 5,
 } as const
 

@@ -1,13 +1,14 @@
 import type { Types } from 'mongoose'
 import type { CustomerDoc } from '../models/Customer.ts'
-import { Lead, RevenueReport, RewardDelivery, XpEvent } from '../models/Game.ts'
-import { levelState, type PlanDoc } from '../models/Plan.ts'
+import { BusinessReport, Lead, RewardDelivery, WorksheetResponse, XpEvent } from '../models/Game.ts'
+import { levelState, progressSummary, type PlanDoc } from '../models/Plan.ts'
+import { businessSummary } from './business.ts'
+import { finalScoreOf } from './flow.ts'
 import {
   conditionLabel,
   conditionProgress,
   dayKey,
   playerLevel,
-  rankFor,
   REWARDS,
   SKILLS,
   skillLevel,
@@ -66,18 +67,22 @@ function streakFrom(days: string[]): number {
   return streak
 }
 
-/** Everything the game UI shows about one player. */
+/**
+ * Both metrics of one customer, side by side and never mixed:
+ * learning (points, skills, tasks, quality of the work) and business (leads, calls, income, profit).
+ */
 export async function gameSummary(customer: CustomerDoc, plan: PlanDoc | null) {
-  const [events, recent, reports, joined, totalLeads, deliveries] = await Promise.all([
+  const [events, recent, reports, joined, totalLeads, deliveries, responses] = await Promise.all([
     XpEvent.aggregate<{ _id: string; points: number }>([
       { $match: { customerId: customer._id } },
       { $group: { _id: '$skill', points: { $sum: '$points' } } },
     ]),
     XpEvent.find({ customerId: customer._id }).sort({ updatedAt: -1 }).limit(15),
-    RevenueReport.find({ customerId: customer._id }).sort({ month: -1 }).limit(24),
+    BusinessReport.find({ customerId: customer._id }).sort({ month: -1 }).limit(24),
     Lead.countDocuments({ referrerId: customer._id, status: 'joined' }),
     Lead.countDocuments({ referrerId: customer._id }),
     RewardDelivery.find({ customerId: customer._id }),
+    WorksheetResponse.find({ customerId: customer._id, ...(plan ? { planId: plan._id } : {}) }, { answers: 0, 'attempts.answers': 0 }),
   ])
   const activeDays = await XpEvent.distinct('day', { customerId: customer._id })
 
@@ -88,13 +93,22 @@ export async function gameSummary(customer: CustomerDoc, plan: PlanDoc | null) {
   })
   const xp = skills.reduce((sum, s) => sum + s.points, 0)
 
-  const latest = reports[0] ?? null
-  const bestRevenue = reports.reduce((max, r) => Math.max(max, r.amount), 0)
-  const rank = rankFor(latest?.amount ?? 0)
+  const business = businessSummary(reports)
 
-  const levels = plan ? levelState(plan, customer.taskProgress) : null
+  // The quality of the work: checked tasks, their scores, and how much versions improve.
+  const scores = responses.flatMap((r) => {
+    const score = finalScoreOf(r)
+    return score === null ? [] : [score]
+  })
+  const improvements = responses.flatMap((r) => {
+    const checked = r.attempts.filter((a) => typeof a.score === 'number')
+    return checked.length > 1 ? [checked.at(-1)!.score! - checked[0]!.score!] : []
+  })
+  const average = (list: number[]) => (list.length ? Math.round(list.reduce((sum, n) => sum + n, 0) / list.length) : null)
+
+  const levels = plan ? levelState(plan, customer) : null
   const levelsDone = levels ? levels.chapters.filter((c) => c.state === 'completed').length : 0
-  const facts = { referrals: joined, bestRevenue, levelsDone, allTasksDone: Boolean(levels?.finished) }
+  const facts = { referrals: joined, bestRevenue: business.best, levelsDone, allTasksDone: Boolean(levels?.finished) }
   const delivered = new Set(deliveries.map((d) => d.rewardKey))
 
   return {
@@ -102,14 +116,15 @@ export async function gameSummary(customer: CustomerDoc, plan: PlanDoc | null) {
     ...playerLevel(xp),
     streak: streakFrom(activeDays),
     skills,
-    revenue: {
-      latestMonth: latest?.month ?? null,
-      latest: latest?.amount ?? 0,
-      best: bestRevenue,
-      rank: { ...rank.rank, index: rank.index },
-      next: rank.next,
-      history: reports.map((r) => ({ month: r.month, amount: r.amount })).reverse(),
+    learning: {
+      tasks: plan ? progressSummary(plan, customer) : { total: 0, started: 0, completed: 0 },
+      levelsDone,
+      levels: levels?.total ?? 0,
+      checked: scores.length,
+      averageScore: average(scores),
+      averageImprovement: average(improvements),
     },
+    business,
     referrals: { joined, total: totalLeads, code: customer.referralCode },
     rewards: REWARDS.map((reward) => {
       const progress = Math.max(...reward.conditions.map((c) => conditionProgress(c, facts)))

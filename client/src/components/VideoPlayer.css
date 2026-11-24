@@ -609,3 +609,15 @@
     animation: none !important;
   }
 }
+
+/* ---------- Captions ---------- */
+
+.vp__btn.is-on {
+  color: #58c7e8;
+}
+
+.vp__video::cue {
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  font-size: 0.95em;
+}

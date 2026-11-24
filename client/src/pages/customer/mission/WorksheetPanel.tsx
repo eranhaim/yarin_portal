@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../../components/Icon'
 import { api, errorMessage } from '../../../lib/api'
-import type { Worksheet, WorksheetAnswers, WorksheetField, WorksheetValue, WorksheetView } from '../../../lib/types'
+import type { Worksheet, WorksheetAnswers, WorksheetField, WorksheetValue, WorksheetView, WorkResult } from '../../../lib/types'
 
 // The in-app work screen ("מסך עבודה"): the Word worksheet as a form. Answers save automatically.
 
@@ -10,13 +10,15 @@ type Props = {
   worksheet: Worksheet
   view: WorksheetView
   onView: (view: WorksheetView) => void
-  /** After a submit, open the reviewer. */
-  onSubmitted: () => void
+  /** The work was handed in (a new version). */
+  onWork: (result: WorkResult) => void
+  /** Whether an AI check follows. */
+  examiner: boolean
 }
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
-export function WorksheetPanel({ taskId, worksheet, view, onView, onSubmitted }: Props) {
+export function WorksheetPanel({ taskId, worksheet, view, onView, onWork, examiner }: Props) {
   const [answers, setAnswers] = useState<WorksheetAnswers>(view.answers)
   const [save, setSave] = useState<SaveState>('idle')
   const [busy, setBusy] = useState(false)
@@ -27,7 +29,8 @@ export function WorksheetPanel({ taskId, worksheet, view, onView, onSubmitted }:
   const persist = async (value: WorksheetAnswers) => {
     setSave('saving')
     try {
-      onView(await api<WorksheetView>(`/me/tasks/${taskId}/worksheet`, { method: 'PUT', body: { answers: value } }))
+      const res = await api<{ view: WorksheetView }>(`/me/tasks/${taskId}/worksheet`, { method: 'PUT', body: { answers: value } })
+      onView(res.view)
       setSave('saved')
     } catch {
       setSave('error')
@@ -64,9 +67,10 @@ export function WorksheetPanel({ taskId, worksheet, view, onView, onSubmitted }:
     setBusy(true)
     setError(null)
     try {
-      onView(await api<WorksheetView>(`/me/tasks/${taskId}/worksheet/submit`, { body: { answers: latest.current } }))
+      const result = await api<WorkResult>(`/me/tasks/${taskId}/worksheet/submit`, { body: { answers: latest.current } })
       setSave('saved')
-      onSubmitted()
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      onWork(result)
     } catch (err) {
       setError(errorMessage(err))
     } finally {
@@ -107,10 +111,10 @@ export function WorksheetPanel({ taskId, worksheet, view, onView, onSubmitted }:
       )}
 
       <footer className="worksheet__footer">
-        {view.submittedAt && <span className="worksheet__submitted">הוגש. אפשר לעדכן ולהגיש שוב.</span>}
+        {view.attempts.length > 0 && <span className="worksheet__submitted">הגשתם גרסה {view.attempts.length}. אפשר לשפר ולהגיש שוב.</span>}
         <button type="button" className="btn btn--game" onClick={() => void submit()} disabled={busy}>
           {busy ? <span className="spinner" /> : <Icon name="check" size={18} />}
-          {view.submittedAt ? 'הגשה מחדש ובדיקה' : 'הגשה ובדיקה עם הבוחן'}
+          {view.submittedAt ? 'הגשת גרסה חדשה' : examiner ? 'הגשה, ומשם לבדיקה' : 'הגשה'}
         </button>
       </footer>
     </section>

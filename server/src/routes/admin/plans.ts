@@ -1,9 +1,11 @@
 import { Router, type Response } from 'express'
 import { isValidObjectId, Types } from 'mongoose'
 import { z } from 'zod'
+import { forgetKnowledge } from '../../ai/knowledge.ts'
 import { parseBody } from '../../http.ts'
 import { Asset, deleteAssets } from '../../models/Asset.ts'
 import { Customer } from '../../models/Customer.ts'
+import { LessonNote } from '../../models/Game.ts'
 import { Plan, planTaskIds, toPlanView, type PlanDoc } from '../../models/Plan.ts'
 
 export const plansRouter = Router()
@@ -31,16 +33,19 @@ const planInput = z.object({
   title: z.string().trim().min(1, 'חובה למלא שם לתוכנית').max(200, 'שם התוכנית ארוך מדי'),
   description: z.string().trim().max(4000, 'התיאור ארוך מדי').default(''),
   chapters: z.array(chapterInput).max(200, 'יותר מדי שלבים').default([]),
+  libraryOpen: z.boolean().optional(),
 })
 
-type TaskContent = { skill: unknown; worksheet: unknown; quiz: unknown; rubric: unknown }
+/** Game content and rules of a task (the game part of the editor saves them on their own). */
+const CONTENT_FIELDS = ['skill', 'worksheet', 'quiz', 'rubric', 'practice', 'fileRule', 'passScore', 'minutes', 'tracks', 'stages'] as const
+type TaskContent = Partial<Record<(typeof CONTENT_FIELDS)[number], unknown>>
 
 /** Game content of the plan's tasks, by task id. The editor does not send it, so a save keeps it. */
 function contentById(plan: PlanDoc | null): Map<string, TaskContent> {
   const map = new Map<string, TaskContent>()
   for (const chapter of plan?.chapters ?? []) {
     for (const task of chapter.tasks) {
-      map.set(task._id.toString(), { skill: task.skill, worksheet: task.worksheet, quiz: task.quiz, rubric: task.rubric })
+      map.set(task._id.toString(), Object.fromEntries(CONTENT_FIELDS.map((field) => [field, task[field]])))
     }
   }
   return map
@@ -50,6 +55,7 @@ function toDocument(input: z.infer<typeof planInput>, content = new Map<string, 
   return {
     title: input.title,
     description: input.description,
+    ...(input.libraryOpen === undefined ? {} : { libraryOpen: input.libraryOpen }),
     chapters: input.chapters.map((chapter) => ({
       _id: chapter.id ? new Types.ObjectId(chapter.id) : new Types.ObjectId(),
       title: chapter.title,
@@ -114,6 +120,7 @@ plansRouter.put('/:id', async (req, res) => {
   if (!plan) return
   plan.set(toDocument(body, contentById(plan)))
   await plan.save()
+  forgetKnowledge()
 
   // Remove videos and files of tasks that are no longer in the plan.
   const taskIds = [...planTaskIds(plan)].map((id) => new Types.ObjectId(id))
@@ -137,6 +144,8 @@ plansRouter.delete('/:id', async (req, res) => {
     return
   }
   await deleteAssets(await Asset.find({ planId: plan._id }))
+  await LessonNote.deleteMany({ planId: plan._id })
   await plan.deleteOne()
+  forgetKnowledge()
   res.json({ ok: true })
 })

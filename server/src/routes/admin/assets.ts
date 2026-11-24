@@ -67,6 +67,9 @@ assetsRouter.post('/plans/:planId/assets', async (req, res) => {
     return
   }
 
+  // Uploads that never finished (closed tab, lost connection) are removed after a day.
+  await deleteAssets(await Asset.find({ planId: plan._id, status: 'pending', createdAt: { $lt: new Date(Date.now() - 86_400_000) } }))
+
   const scope = body.taskId ? `tasks/${body.taskId}` : 'plan'
   const key = `plans/${plan.id}/${scope}/${body.kind}s/${randomUUID()}-${safeFileName(body.fileName)}`
 

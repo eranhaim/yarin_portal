@@ -2,11 +2,16 @@ import { useState, type CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { CityMap } from '../../components/city/CityMap'
 import { Icon } from '../../components/Icon'
-import { DISTRICT_COLORS, formatShekels, missionLabel } from '../../lib/game'
-import { useCustomer } from './customerContext'
+import { DISTRICT_COLORS, formatShekels, minutesLabel, missionLabel, monthLabel, STEP_ICON } from '../../lib/game'
+import type { GameSummary, MyPlan } from '../../lib/types'
+import { focusPath, useCustomer } from './customerContext'
+import './map.css'
 import { NoPlan } from './NoPlan'
 
-/** Remembers the last mission the customer saw, so their character can walk to a new one. */
+// The home screen. The city is the background; the one thing to do now is in front, and the two metrics
+// (learning and business) sit side by side, apart.
+
+/** Remembers the last mission the customer saw, so the car drives from there to a new one. */
 function useLastSeenPosition(key: string, current: number) {
   const read = () => {
     try {
@@ -30,105 +35,106 @@ function useLastSeenPosition(key: string, current: number) {
 export function MapPage() {
   const { me, plan } = useCustomer()
   if (!plan) return <NoPlan name={me.name} />
-  return <PlanCity key={plan.id} />
+  return <PlanCity key={plan.id} plan={plan} />
 }
 
-function PlanCity() {
-  const { me, plan, game, look, hosts } = useCustomer()
+function PlanCity({ plan }: { plan: MyPlan }) {
+  const { me, game, look, hosts } = useCustomer()
   const navigate = useNavigate()
-  const p = plan!
-  const position = p.level.position
-  const { lastSeen, save } = useLastSeenPosition(`yp:city:${me.id}:${p.id}`, position)
-  const [passed, setPassed] = useState(false)
+  const { position } = plan.level
+  const { lastSeen, save } = useLastSeenPosition(`yp:city:${me.id}:${plan.id}`, position)
+  const [leaving, setLeaving] = useState(false)
 
-  const current = p.chapters[p.level.index]
-  const nextTask = current?.tasks.find((t) => !t.completed)
-  const flatIndex = p.chapters.slice(0, p.level.index).reduce((n, c) => n + c.tasks.length, 0) + (current?.tasks.findIndex((t) => !t.completed) ?? 0)
-  const label = nextTask ? missionLabel(nextTask.title, flatIndex + 1) : null
-  const percent = p.summary.total ? Math.round((p.summary.completed / p.summary.total) * 100) : 0
-  const color = DISTRICT_COLORS[p.level.index % DISTRICT_COLORS.length]
-
-  const arrive = () => {
-    // A walk that covered new missions earns the big banner.
-    if (lastSeen < position) setPassed(true)
-    save()
+  /** The car drives up to the mission, and the page opens when it arrives. */
+  const go = () => {
+    if (plan.focus.kind === 'task') setLeaving(true)
+    else navigate(focusPath(plan))
   }
 
   return (
     <div className="city-page">
       <CityMap
-        plan={p}
+        plan={plan}
         look={look}
         hosts={hosts}
         walkFrom={lastSeen}
-        onArrive={arrive}
+        leaving={leaving}
+        onLeft={() => navigate(focusPath(plan))}
+        onArrive={save}
         onSelectMission={(chapterId, taskId) => navigate(`/level/${chapterId}/task/${taskId}`)}
       />
+      <FocusCard plan={plan} onGo={go} leaving={leaving} />
+      {game && <Meters plan={plan} game={game} />}
+    </div>
+  )
+}
 
-      {/* HUD */}
-      <div className="hud hud--player">
-        <div className="hud__level">
-          <b>{game?.level ?? 1}</b>
-          <span>רמה</span>
-        </div>
-        <div className="hud__who">
-          <strong>{me.name.split(' ')[0]}</strong>
-          <span className="hud__bar" aria-label={`${percent}% מהתוכנית`}>
-            <i style={{ width: `${percent}%` }} />
-          </span>
-          <small>
-            {p.summary.completed}/{p.summary.total} משימות · {game?.xp ?? 0} XP
-          </small>
-        </div>
-        {game && game.streak > 0 && (
-          <span className="hud__streak" title="ימים ברצף">
-            <Icon name="sparkles" size={14} /> {game.streak}
-          </span>
+function FocusCard({ plan, onGo, leaving }: { plan: MyPlan; onGo: () => void; leaving: boolean }) {
+  const { focus } = plan
+  const chapterIndex = plan.chapters.findIndex((c) => c.id === focus.chapterId)
+  const chapter = plan.chapters[chapterIndex]
+  const task = chapter?.tasks.find((t) => t.id === focus.taskId)
+  const color = chapterIndex >= 0 ? DISTRICT_COLORS[chapterIndex % DISTRICT_COLORS.length] : undefined
+  return (
+    <section className="focus-card" style={{ '--c': color } as CSSProperties} aria-label="המשימה שלכם עכשיו">
+      <p className="focus-card__eyebrow">
+        <span className="focus-bar__dot" aria-hidden="true" />
+        {focus.kind === 'finished' ? 'סוף המסלול' : focus.kind === 'diagnosis' ? 'מתחילים כאן' : `המשימה שלכם עכשיו · שלב ${chapterIndex + 1}`}
+      </p>
+      <h1>{missionLabel(focus.title, 1).label}</h1>
+      <p className="focus-card__why">{focus.why}</p>
+      {task && task.flow.steps.length > 0 && (
+        <ol className="focus-card__steps" aria-label={`${focus.done} מתוך ${focus.total} צעדים`}>
+          {task.flow.steps.map((s) => (
+            <li key={s.key} className={`is-${s.state}`} title={s.label}>
+              <Icon name={s.state === 'done' ? 'check' : STEP_ICON[s.key]} size={15} />
+              {s.state === 'current' && <span>{s.label}</span>}
+            </li>
+          ))}
+        </ol>
+      )}
+      <div className="focus-card__actions">
+        <button type="button" className="btn btn--game btn--lg" onClick={onGo} disabled={leaving}>
+          {focus.cta}
+          {focus.minutes > 0 && <small>{minutesLabel(focus.minutes)}</small>}
+        </button>
+        {chapter && (
+          <Link to={`/level/${chapter.id}`} className="focus-card__more">
+            כל השלב
+          </Link>
         )}
       </div>
+    </section>
+  )
+}
 
-      <Link to="/rewards" className="hud hud--money" title="הדרך לבוס">
-        <span className="hud__money">{formatShekels(game?.revenue.latest ?? 0)}</span>
-        <span className="hud__rank">
-          {game?.revenue.rank.label ?? 'טירון'}
-          {game?.revenue.next && <small> · הבא: {game.revenue.next.label}</small>}
+function Meters({ plan, game }: { plan: MyPlan; game: GameSummary }) {
+  const { business } = game
+  const percent = plan.summary.total ? Math.round((plan.summary.completed / plan.summary.total) * 100) : 0
+  return (
+    <div className="meters">
+      <Link to="/learning" className="meters__item meters__item--learn">
+        <small>
+          <Icon name="star" size={14} /> למידה
+        </small>
+        <b>{percent}%</b>
+        <span className="meters__bar">
+          <i style={{ width: `${percent}%` }} />
+        </span>
+        <span>
+          {plan.summary.completed}/{plan.summary.total} משימות · רמה {game.level}
         </span>
       </Link>
-
-      {p.level.finished ? (
-        <div className="hud hud--mission" style={{ '--c': '#ffd84d' } as CSSProperties}>
-          <span className="hud__tag">התוכנית הושלמה</span>
-          <h2>אתם הבוס!</h2>
-          <p>סיימתם את כל המשימות בעיר. עכשיו מגדילים את ההכנסות.</p>
-          <Link to="/rewards" className="btn btn--game">
-            <Icon name="trophy" size={18} /> לדרך לבוס
-          </Link>
-        </div>
-      ) : current && nextTask && label ? (
-        <div className="hud hud--mission" style={{ '--c': color } as CSSProperties}>
-          <span className="hud__tag">
-            שלב {p.level.index + 1}: {current.title}
-          </span>
-          <h2>
-            <b>{label.badge}</b> {label.label}
-          </h2>
-          <div className="hud__actions">
-            <button type="button" className="btn btn--game" onClick={() => navigate(`/level/${current.id}/task/${nextTask.id}`)}>
-              <Icon name="play" size={18} /> יאללה, למשימה
-            </button>
-            <Link to={`/level/${current.id}`} className="btn btn--ghost-light">
-              כל המשימות בשלב
-            </Link>
-          </div>
-        </div>
-      ) : null}
-
-      {passed && (
-        <div className="mission-passed" onAnimationEnd={(e) => e.animationName === 'mission-passed-out' && setPassed(false)}>
-          <span>משימה הושלמה!</span>
-          <small>הדמות שלכם התקדמה בעיר</small>
-        </div>
-      )}
+      <Link to="/business" className="meters__item meters__item--biz">
+        <small>
+          <Icon name="chart" size={14} /> העסק
+        </small>
+        <b>{business.latest ? formatShekels(business.latest.revenue) : '—'}</b>
+        <span className="meters__bar">
+          <i style={{ width: `${Math.min(100, ((business.latest?.revenue ?? 0) / 100_000) * 100)}%` }} />
+        </span>
+        <span>{business.due ? `${monthLabel(business.due)} מחכה לעדכון` : business.latest ? business.rank.label : 'מתחילים באבחון'}</span>
+      </Link>
     </div>
   )
 }

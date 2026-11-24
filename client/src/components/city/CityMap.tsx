@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { DISTRICT_COLORS, missionLabel } from '../../lib/game'
 import type { Host, Look, MyPlan } from '../../lib/types'
 import { Board } from '../Board'
@@ -20,14 +20,21 @@ type Props = {
   /** The last mission the customer saw, so their character walks from there. */
   walkFrom: number
   onArrive: () => void
+  /** The customer pressed the main button: drive up to the mission, then call onLeft. */
+  leaving: boolean
+  onLeft: () => void
   onSelectMission: (chapterId: string, taskId: string) => void
 }
 
-export function CityMap({ plan, look, hosts, walkFrom, onArrive, onSelectMission }: Props) {
+export function CityMap({ plan, look, hosts, walkFrom, onArrive, leaving, onLeft, onSelectMission }: Props) {
   const [canRender] = useState(supportsWebGL)
   const [reducedMotion] = useState(prefersReducedMotion)
   const labels = useRef<(HTMLElement | null)[]>([])
   const position = plan.level.position
+
+  useEffect(() => {
+    if (leaving) onLeft()
+  }, [leaving, onLeft])
 
   const { districts, missions } = useMemo(() => {
     const districts: CityDistrict[] = plan.chapters.map((c, i) => ({

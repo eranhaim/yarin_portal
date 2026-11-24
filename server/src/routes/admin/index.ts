@@ -13,8 +13,11 @@ import { adminsRouter } from './admins.ts'
 import { assetsRouter } from './assets.ts'
 import { customersRouter } from './customers.ts'
 import { adminGameRouter } from './game.ts'
+import { labRouter } from './lab.ts'
+import { lessonsRouter } from './lessons.ts'
 import { plansRouter } from './plans.ts'
 import { submissionsRouter } from './submissions.ts'
+import { worksRouter } from './works.ts'
 
 export const adminRouter = Router()
 
@@ -82,3 +85,6 @@ adminRouter.use('/admins', adminsRouter)
 adminRouter.use(assetsRouter)
 adminRouter.use(submissionsRouter)
 adminRouter.use(adminGameRouter)
+adminRouter.use(worksRouter)
+adminRouter.use(labRouter)
+adminRouter.use(lessonsRouter)

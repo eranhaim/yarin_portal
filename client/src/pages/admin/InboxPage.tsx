@@ -7,6 +7,7 @@ import { api, errorMessage } from '../../lib/api'
 import { formatBytes, formatDateTime } from '../../lib/format'
 import type { InboxSubmission } from '../../lib/types'
 import { useInbox } from './inbox'
+import { WorkTabs } from './WorksPage'
 
 type Filter = 'unread' | 'all'
 
@@ -57,7 +58,7 @@ export function InboxPage() {
     <div className="adm-page">
       <header className="adm-page__head">
         <div>
-          <h1>הגשות</h1>
+          <h1>עבודות</h1>
           <p>
             {summary.unread === 0 ? 'אין הגשות חדשות.' : summary.unread === 1 ? 'הגשה חדשה אחת.' : `${summary.unread} הגשות חדשות.`} הקבצים
             שהלקוחות העלו למשימות, מהחדש לישן.
@@ -77,11 +78,11 @@ export function InboxPage() {
         </div>
       </header>
 
-      <div className="adm-tabs" role="tablist" aria-label="סינון הגשות">
+      <WorkTabs />
+      <div className="adm-filter" role="radiogroup" aria-label="סינון">
         {(['unread', 'all'] as const).map((f) => (
-          <button key={f} type="button" role="tab" aria-selected={filter === f} className="adm-tab" onClick={() => setFilter(f)}>
-            {f === 'unread' ? 'חדשות' : 'כל ההגשות'}
-            {f === 'unread' && summary.unread > 0 && <span className="adm-tab__count">{summary.unread}</span>}
+          <button key={f} type="button" role="radio" aria-checked={filter === f} onClick={() => setFilter(f)}>
+            {f === 'unread' ? 'חדשים' : 'כל הקבצים'}
           </button>
         ))}
       </div>

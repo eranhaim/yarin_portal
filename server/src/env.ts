@@ -30,6 +30,15 @@ const schema = z.object({
   AI_MODEL: z.preprocess(blankToUndefined, z.string().default('claude-opus-5-5')),
   // Safety cap: AI requests per customer per day.
   AI_DAILY_LIMIT: z.coerce.number().int().positive().default(120),
+
+  // Hebrew speech recognition for homework videos (whisper.cpp). Off until both are set.
+  SPEECH_BIN: optional(z.string()),
+  SPEECH_MODEL_DIR: optional(z.string()),
+  SPEECH_QUANTIZE_BIN: optional(z.string()),
+  SPEECH_MODEL_URL: z.preprocess(
+    blankToUndefined,
+    z.url().default('https://huggingface.co/ivrit-ai/whisper-large-v3-turbo-ggml/resolve/main/ggml-model.bin'),
+  ),
 })
 
 const parsed = schema.safeParse(process.env)

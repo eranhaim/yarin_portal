@@ -4,13 +4,16 @@ import type { CustomerSelf, GameSummary, Host, Look, MyPlan, TaskStatus } from '
 export type CustomerContext = {
   me: CustomerSelf
   plan: MyPlan | null
-  updateTask: (taskId: string, status: TaskStatus) => Promise<void>
+  updateTask: (taskId: string, status: Exclude<TaskStatus, 'not_started'>) => Promise<void>
   /** Replaces the plan with a newer copy from the server (for example, after a homework upload). */
   applyPlan: (plan: MyPlan | null) => void
-  /** Points, levels, rank, prizes. null while loading. */
+  /** Both metrics, prizes and points. null while loading. */
   game: GameSummary | null
-  /** Reloads the game summary; new points appear as "+XP" toasts and level-ups get a celebration. */
+  applyGame: (game: GameSummary) => void
+  /** Reloads the summary; new points appear as "+XP" toasts and level-ups get a celebration. */
   refreshGame: () => Promise<void>
+  /** Shows "mission complete" with what comes next. */
+  celebrateTask: (taskId: string) => void
   look: Look | null
   setLook: (look: Look) => void
   setMe: (me: CustomerSelf) => void
@@ -20,4 +23,12 @@ export type CustomerContext = {
 
 export function useCustomer() {
   return useOutletContext<CustomerContext>()
+}
+
+/** Where the one thing to do now lives. */
+export function focusPath(plan: MyPlan): string {
+  const { focus } = plan
+  if (focus.kind === 'diagnosis') return '/diagnosis'
+  if (focus.kind === 'finished' || !focus.taskId) return '/business'
+  return `/level/${focus.chapterId}/task/${focus.taskId}`
 }

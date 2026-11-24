@@ -2,6 +2,7 @@ import express, { Router } from 'express'
 import { isValidObjectId, Types } from 'mongoose'
 import { z } from 'zod'
 import { aiJson, sendAiError } from '../../ai/claude.ts'
+import { forgetKnowledge } from '../../ai/knowledge.ts'
 import { CONTENT_SYSTEM } from '../../ai/prompts.ts'
 import {
   answersAsText,
@@ -14,13 +15,15 @@ import {
   type Worksheet,
   type WorksheetAnswers,
 } from '../../game/content.ts'
-import { REWARDS, SKILL_KEYS, XP } from '../../game/rules.ts'
-import { award, gameSummary, revoke } from '../../game/xp.ts'
+import { REWARDS, SKILL_KEYS } from '../../game/rules.ts'
+import { STAGE_KEYS, STAGES, TRACK_KEYS, TRACKS, BOTTLENECKS, bottleneckLabel, diagnosisAsText, stageLabel, trackLabel, type DiagnosisAnswers } from '../../game/tracks.ts'
+import { gameSummary } from '../../game/xp.ts'
 import { parseBody } from '../../http.ts'
 import { detectImageType, IMAGE_TYPES } from '../../images.ts'
 import { Customer } from '../../models/Customer.ts'
 import {
   CoachSession,
+  Diagnosis,
   Lead,
   LEAD_STATUSES,
   putSetting,
@@ -28,7 +31,7 @@ import {
   RewardDelivery,
   WorksheetResponse,
 } from '../../models/Game.ts'
-import { Plan } from '../../models/Plan.ts'
+import { FILE_RULES, Plan, PRACTICE_KINDS, toTaskView, type TaskDoc } from '../../models/Plan.ts'
 import { hostLooks } from '../public.ts'
 import { lookFromPhoto } from '../me/profile.ts'
 
@@ -45,7 +48,7 @@ adminGameRouter.get('/customers/:id/game', async (req, res) => {
   }
   const plan = customer.planId ? await Plan.findById(customer.planId) : null
   const tasks = plan?.chapters.flatMap((c) => c.tasks) ?? []
-  const [summary, responses, quizzes, sessions, leads] = await Promise.all([
+  const [summary, responses, quizzes, sessions, leads, diagnosis] = await Promise.all([
     gameSummary(customer, plan),
     WorksheetResponse.find({ customerId: customer._id }),
     QuizAttempt.aggregate<{ _id: Types.ObjectId; best: number; total: number; tries: number }>([
@@ -54,9 +57,20 @@ adminGameRouter.get('/customers/:id/game', async (req, res) => {
     ]),
     CoachSession.find({ customerId: customer._id }).sort({ updatedAt: -1 }).limit(30),
     Lead.find({ referrerId: customer._id }).sort({ createdAt: -1 }),
+    Diagnosis.findOne({ customerId: customer._id, submittedAt: { $ne: null } }).sort({ submittedAt: -1 }),
   ])
   res.json({
     game: summary,
+    route: {
+      track: customer.track ?? null,
+      stage: customer.stage ?? null,
+      bottleneck: customer.bottleneck ?? null,
+      by: customer.routeBy ?? null,
+      labels: { track: trackLabel(customer.track), stage: stageLabel(customer.stage), bottleneck: bottleneckLabel(customer.bottleneck) },
+    },
+    diagnosis: diagnosis
+      ? { at: diagnosis.submittedAt, answers: diagnosisAsText((diagnosis.answers ?? {}) as DiagnosisAnswers), result: diagnosis.result }
+      : null,
     worksheets: responses.map((r) => {
       const task = tasks.find((t) => t._id.equals(r.taskId))
       return {
@@ -66,6 +80,9 @@ adminGameRouter.get('/customers/:id/game', async (req, res) => {
         submittedAt: r.submittedAt,
         review: r.review ?? null,
         chat: r.chat.map((t) => ({ role: t.role, text: t.text, at: t.at })),
+        attempts: r.attempts.map((a) => ({ number: a.number ?? 1, files: a.files, submittedAt: a.submittedAt, score: a.score ?? null, summary: a.summary })),
+        human: r.human ?? null,
+        accepted: Boolean(r.acceptedAt),
       }
     }),
     quizzes: quizzes.map((q) => ({ taskId: q._id.toString(), best: q.best, total: q.total, tries: q.tries })),
@@ -147,19 +164,13 @@ adminGameRouter.patch('/leads/:id', async (req, res) => {
   }
   lead.status = body.status
   await lead.save()
-  // A friend who joined pays the referrer; changing it back takes the points back.
-  // (A deleted referrer gets nothing: their game data is gone.)
-  const refKey = `referral:${lead.id as string}`
-  if (!(await Customer.exists({ _id: lead.referrerId }))) {
-    res.json({ ok: true })
-    return
-  }
-  if (body.status === 'joined') {
-    await award(lead.referrerId, { skill: 'sales', points: XP.referralJoined, refKey, label: `${lead.name} הצטרף/ה בזכותכם!` })
-  } else {
-    await revoke(lead.referrerId, refKey)
-  }
+  // Friends who joined count for the referrer's prizes (see gameSummary). They pay no learning points.
   res.json({ ok: true })
+})
+
+/** The labels of the personal routes, for the editors. */
+adminGameRouter.get('/tracks', (_req, res) => {
+  res.json({ tracks: TRACKS, stages: STAGES.map(({ key, label }) => ({ key, label })), bottlenecks: BOTTLENECKS })
 })
 
 // ---------- Settings: the hosts' characters ----------
@@ -198,7 +209,23 @@ async function findTask(planId: string, taskId: string) {
   return plan && task ? { plan, task } : null
 }
 
-type ContentPatch = { skill?: string | null; worksheet?: unknown; quiz?: unknown; rubric?: string[] }
+type ContentPatch = {
+  skill?: string | null
+  worksheet?: unknown
+  quiz?: unknown
+  rubric?: string[]
+  practice?: string
+  fileRule?: string
+  passScore?: number
+  minutes?: number | null
+  tracks?: string[]
+  stages?: string[]
+}
+
+const contentView = (task: TaskDoc) => {
+  const { skill, worksheet, quiz, rubric, practice, fileRule, passScore, minutes, tracks, stages } = toTaskView(task)
+  return { skill, worksheet, quiz, rubric, practice, fileRule, passScore, minutes, tracks, stages }
+}
 
 /**
  * Writes one task's content with a single atomic update, so several tasks of the same plan
@@ -208,9 +235,9 @@ async function saveTaskContent(planId: Types.ObjectId, taskId: string, patch: Co
   const set: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(patch)) if (value !== undefined) set[`chapters.$[].tasks.$[task].${key}`] = value
   await Plan.updateOne({ _id: planId }, { $set: set }, { arrayFilters: [{ 'task._id': new Types.ObjectId(taskId) }] })
+  forgetKnowledge()
   const found = await findTask(planId.toString(), taskId)
-  const task = found?.task
-  return { skill: task?.skill ?? null, worksheet: task?.worksheet ?? null, quiz: task?.quiz ?? null, rubric: task?.rubric ?? [] }
+  return found ? contentView(found.task) : null
 }
 
 adminGameRouter.post('/plans/:planId/tasks/:taskId/generate', async (req, res) => {
@@ -250,6 +277,12 @@ adminGameRouter.patch('/plans/:planId/tasks/:taskId/content', async (req, res) =
       worksheet: worksheetSchema.nullable().optional(),
       quiz: quizSchema.nullable().optional(),
       rubric: z.array(z.string().max(300)).max(10).optional(),
+      practice: z.enum(PRACTICE_KINDS).optional(),
+      fileRule: z.enum(FILE_RULES).optional(),
+      passScore: z.number().int().min(0).max(100).optional(),
+      minutes: z.number().int().min(1).max(600).nullable().optional(),
+      tracks: z.array(z.enum(TRACK_KEYS)).optional(),
+      stages: z.array(z.enum(STAGE_KEYS)).optional(),
     }),
     req,
     res,
@@ -265,6 +298,12 @@ adminGameRouter.patch('/plans/:planId/tasks/:taskId/content', async (req, res) =
     worksheet: body.worksheet === undefined ? undefined : cleanWorksheet(body.worksheet),
     quiz: body.quiz === undefined ? undefined : cleanQuiz(body.quiz),
     rubric: body.rubric,
+    practice: body.practice,
+    fileRule: body.fileRule,
+    passScore: body.passScore,
+    minutes: body.minutes,
+    tracks: body.tracks,
+    stages: body.stages,
   })
   res.json({ content: saved })
 })

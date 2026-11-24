@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { businessRouter } from './business.ts'
 import { coachRouter } from './coach.ts'
 import { gameRouter } from './game.ts'
 import { homeworkRouter } from './homework.ts'
@@ -13,5 +14,6 @@ meRouter.use(requireCustomer)
 meRouter.use(planRouter)
 meRouter.use(homeworkRouter)
 meRouter.use(gameRouter)
+meRouter.use(businessRouter)
 meRouter.use(coachRouter)
 meRouter.use(profileRouter)

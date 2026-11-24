@@ -1,0 +1,227 @@
+/* The home screen: the city behind, one focus card and the two metrics in front. */
+
+.city-page {
+  position: relative;
+  height: calc(100dvh - 61px);
+  min-height: 520px;
+  overflow: hidden;
+  background: #0b0e13;
+}
+
+.focus-card {
+  position: absolute;
+  z-index: 6;
+  bottom: 24px;
+  inset-inline-start: 24px;
+  width: min(440px, calc(100% - 48px));
+  padding: 22px 24px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 22px;
+  background: linear-gradient(160deg, rgba(16, 20, 27, 0.94), rgba(16, 20, 27, 0.82));
+  box-shadow: 0 30px 60px -24px rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(16px);
+  animation: rise-in 0.5s ease 0.1s both;
+}
+
+.focus-card__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--gold);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.focus-card h1 {
+  margin: 10px 0 4px;
+  font-family: var(--font-ui);
+  font-size: clamp(1.3rem, 2.4vw, 1.7rem);
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.focus-card__why {
+  color: var(--text-muted);
+}
+
+.focus-card__steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.focus-card__steps li {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 9px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.focus-card__steps .is-done {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.focus-card__steps .is-current {
+  padding: 0 13px;
+  background: rgba(240, 184, 74, 0.18);
+  color: #fff;
+  font-weight: 700;
+}
+
+.focus-card__steps .is-current svg {
+  color: var(--gold);
+}
+
+.focus-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.focus-card__actions .btn--game {
+  flex: 1;
+  gap: 10px;
+  justify-content: center;
+}
+
+.focus-card__actions .btn small {
+  opacity: 0.75;
+  font-weight: 600;
+}
+
+.focus-card__more {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  text-underline-offset: 4px;
+}
+
+.focus-card__more:hover {
+  color: #fff;
+}
+
+/* The two metrics. */
+.meters {
+  position: absolute;
+  z-index: 5;
+  top: 18px;
+  inset-inline-start: 24px;
+  display: flex;
+  gap: 10px;
+}
+
+.meters__item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 168px;
+  padding: 11px 15px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: rgba(14, 18, 24, 0.78);
+  color: #fff;
+  text-decoration: none;
+  backdrop-filter: blur(12px);
+  transition: border-color 0.15s ease;
+}
+
+.meters__item--learn {
+  --m: var(--learn);
+  --mark: var(--learn-mark);
+}
+
+.meters__item--biz {
+  --m: var(--biz);
+  --mark: var(--biz-mark);
+}
+
+.meters__item:hover {
+  border-color: var(--m);
+}
+
+.meters__item small {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--m);
+  font-weight: 700;
+}
+
+.meters__item b {
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.meters__bar {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.meters__bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--mark);
+}
+
+.meters__item > span:last-child {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+@media (max-width: 760px) {
+  .city-page {
+    height: calc(100dvh - 61px - 58px - env(safe-area-inset-bottom));
+  }
+
+  .focus-card {
+    right: 10px;
+    bottom: 10px;
+    left: 10px;
+    width: auto;
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .focus-card__why {
+    font-size: 0.9rem;
+  }
+
+  .meters {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    gap: 8px;
+  }
+
+  .meters__item {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 12px;
+  }
+
+  .meters__item b {
+    font-size: 1.1rem;
+  }
+
+  .meters__item > span:last-child {
+    overflow: hidden;
+    font-size: 0.72rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
