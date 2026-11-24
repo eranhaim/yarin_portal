@@ -250,6 +250,7 @@ export type AdminStatus = {
   storage: { status: 'connected' | 'not_configured' | 'error'; bucket?: string }
   customers: number
   plans: number
+  ai: { enabled: boolean; ok: boolean; reason: 'credit' | 'key' | null; since: string | null }
 }
 
 
@@ -411,6 +412,8 @@ export type CoachInfo = {
   persona: CoachPersona
   title: string
   available: boolean
+  /** The AI itself is down for now. */
+  paused: boolean
   modes: CoachModeInfo[]
   sessions: number
   scores: { id: string; score: number; at: string }[]

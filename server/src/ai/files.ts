@@ -149,7 +149,7 @@ async function readOne(file: WorkFile, options: ReadOptions, transcripts: Record
         media.transcript === null
           ? 'The speech could not be transcribed. Judge only what you see, and say so.'
           : media.transcript
-            ? `What is said in it (automatic transcript, small mistakes are possible${options.long ? '; minutes:seconds in brackets; the speakers are not marked, so work out who says what' : ''}):\n${clip(media.transcript, options.long ? MAX_CALL : MAX_TEXT)}`
+            ? `What is said in it (automatic transcript, small mistakes are possible${options.long ? '; minutes:seconds in brackets; voices are numbered by sound when there are several, so work out who each one is' : ''}):\n${clip(media.transcript, options.long ? MAX_CALL : MAX_TEXT)}`
             : 'Nobody speaks in it.',
       ),
     )

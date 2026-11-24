@@ -88,8 +88,8 @@ export async function readMedia(url: string, options: { long?: boolean; onProgre
     }
     let transcript: string | null = null
     if (info.audio) {
-      const segments = await listen(url, { dir, seconds, safe: [...SAFE_INPUT, ...FORMATS], onProgress: options.onProgress })
-      transcript = segments && (options.long ? withTimes(segments) : plainText(segments))
+      const heard = await listen(url, { dir, seconds, safe: [...SAFE_INPUT, ...FORMATS], speakers: options.long, onProgress: options.onProgress })
+      transcript = heard && (options.long ? withTimes(heard) : plainText(heard))
     } else transcript = ''
     return { seconds: info.seconds, sheets, transcript, cut: info.seconds > seconds + 1 }
   })
@@ -105,7 +105,7 @@ export async function voiceText(data: Buffer): Promise<string | null> {
     const { stdout } = await run('ffmpeg', ['-hide_banner', '-nostdin', ...safe, '-i', file, '-vn', '-t', '300', '-f', 'null', '-progress', 'pipe:1', '-nostats', '-v', 'error', '-'], LIMIT)
     const seconds = Math.ceil(Number([...stdout.matchAll(/out_time_us=(\d+)/g)].at(-1)?.[1] ?? 0) / 1_000_000)
     if (seconds < 1) return ''
-    const segments = await listen(file, { dir, seconds: Math.min(300, seconds), safe })
-    return segments && plainText(segments)
+    const heard = await listen(file, { dir, seconds: Math.min(300, seconds), safe })
+    return heard && plainText(heard)
   })
 }

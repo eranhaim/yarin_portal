@@ -10,11 +10,14 @@ import { env } from '../env.ts'
 
 // Hebrew speech to text, on this server: a small streaming model (Zipformer by Yakov Kolani, published by ivrit.ai,
 // CC BY 4.0) with sherpa-onnx. It is as accurate as the large Whisper model and about ten times faster than real time.
+// In calls the voices are told apart (pyannote segmentation, MIT, and 3D-Speaker CAM++, Apache 2.0).
 // A transcription service (any OpenAI-compatible address) is used instead when its address and key are set.
 
 const run = promisify(execFile)
 
-export type Segment = { start: number; end: number; text: string }
+export type Segment = { start: number; end: number; text: string; speaker?: number }
+/** shares: how much each voice spoke (0-1), when there is more than one. */
+export type Heard = { segments: Segment[]; shares: number[] }
 export type SpeechMode = 'api' | 'local' | 'off'
 
 export function speechMode(): SpeechMode {
@@ -26,34 +29,37 @@ export function speechMode(): SpeechMode {
 export const MAX_RECORDING_SECONDS = 120 * 60
 
 // How many seconds one second of speech takes here; it follows what the server really does.
-let pace = 0.15
+let pace = 0.35
 /** About how long a recording will take, in seconds, with the answer after it. */
 export const speechEta = (seconds: number) => Math.round(25 + seconds * (speechMode() === 'api' ? 0.03 : pace))
 
 // ---------- The model ----------
 
-const REVISION = 'main'
-const MODEL_URL = `https://huggingface.co/ivrit-ai/zipformer2-66m-streaming-he/resolve/${REVISION}/sherpa-onnx`
-const MODEL_FILES: [name: string, bytes: number][] = [
-  ['encoder.int8.onnx', 70_478_964],
-  ['decoder.int8.onnx', 1_049_105],
-  ['joiner.int8.onnx', 771_805],
-  ['tokens.txt', 17_086],
+const HF = 'https://huggingface.co'
+const HEBREW = `${HF}/ivrit-ai/zipformer2-66m-streaming-he/resolve/ee769a2a13b887f91572eec349458bfb0fe79e7a/sherpa-onnx`
+// Exact revisions and sizes: what was tested is what runs.
+const MODEL_FILES: [name: string, bytes: number, url: string][] = [
+  ['encoder.int8.onnx', 70_478_964, `${HEBREW}/encoder.int8.onnx`],
+  ['decoder.int8.onnx', 1_049_105, `${HEBREW}/decoder.int8.onnx`],
+  ['joiner.int8.onnx', 771_805, `${HEBREW}/joiner.int8.onnx`],
+  ['tokens.txt', 17_086, `${HEBREW}/tokens.txt`],
+  ['speakers-segmentation.int8.onnx', 1_540_506, `${HF}/csukuangfj/sherpa-onnx-pyannote-segmentation-3-0/resolve/9403a6902bb58e3d5ae8c7e77c3422de279db2e0/model.int8.onnx`],
+  ['speakers-embedding.onnx', 29_596_979, `${HF}/csukuangfj/speaker-embedding-models/resolve/a8055d6daef723a6a4ecf4de233708575bf4994f/3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx`],
 ]
 const modelDir = () => join(env.SPEECH_MODEL_DIR!, 'zipformer2-66m-he')
 
 let modelState: Promise<boolean> | null = null
 
-/** The model is here. It downloads once (about 72 MB) into the model folder. */
+/** The models are here. They download once (about 103 MB) into the model folder. */
 function localReady(): Promise<boolean> {
   if (!env.SPEECH_MODEL_DIR) return Promise.resolve(false)
   modelState ??= (async () => {
     const dir = modelDir()
     await mkdir(dir, { recursive: true })
-    for (const [name, bytes] of MODEL_FILES) {
+    for (const [name, bytes, url] of MODEL_FILES) {
       const file = join(dir, name)
       if (existsSync(file) && (await stat(file)).size === bytes) continue
-      const res = await fetch(`${MODEL_URL}/${name}`)
+      const res = await fetch(url)
       if (!res.ok || !res.body) throw new Error(`speech model: HTTP ${res.status}`)
       await pipeline(Readable.fromWeb(res.body as never), createWriteStream(`${file}.part`))
       if ((await stat(`${file}.part`)).size !== bytes) throw new Error(`speech model: ${name} has an unexpected size`)
@@ -78,7 +84,7 @@ export function warmUpSpeech(): void {
 
 // ---------- The worker process ----------
 
-type Waiting = { resolve: (segments: Segment[]) => void; reject: (err: Error) => void; onProgress?: (share: number) => void }
+type Waiting = { resolve: (heard: Heard) => void; reject: (err: Error) => void; onProgress?: (share: number) => void }
 
 let worker: ChildProcess | null = null
 let nextId = 1
@@ -88,13 +94,13 @@ function getWorker(): ChildProcess {
   if (worker?.connected) return worker
   const here = fileURLToPath(import.meta.url)
   const child = fork(join(dirname(here), `speechWorker${extname(here)}`), { stdio: ['ignore', 'ignore', 'inherit', 'ipc'] })
-  child.on('message', (message: { id: number; progress?: number; segments?: Segment[]; error?: string }) => {
+  child.on('message', (message: { id: number; progress?: number; segments?: Segment[]; shares?: number[]; error?: string }) => {
     const job = jobs.get(message.id)
     if (!job) return
     if (message.progress !== undefined) job.onProgress?.(message.progress)
     else {
       jobs.delete(message.id)
-      if (message.segments) job.resolve(message.segments)
+      if (message.segments) job.resolve({ segments: message.segments, shares: message.shares ?? [] })
       else job.reject(new Error(message.error ?? 'speech worker failed'))
       keepAlive(child)
     }
@@ -122,13 +128,13 @@ function keepAlive(child: ChildProcess): void {
   }
 }
 
-function localSegments(file: string, onProgress?: (share: number) => void): Promise<Segment[]> {
+function hear(file: string, speakers: boolean, onProgress?: (share: number) => void): Promise<Heard> {
   return new Promise((resolve, reject) => {
     const id = nextId++
     jobs.set(id, { resolve, reject, onProgress })
     const child = getWorker()
     keepAlive(child)
-    child.send({ id, file, model: modelDir() })
+    child.send({ id, file, model: modelDir(), speakers })
   })
 }
 
@@ -153,8 +159,8 @@ async function apiPiece(file: string, offset: number): Promise<Segment[]> {
  */
 export async function listen(
   input: string,
-  options: { dir: string; seconds: number; safe: readonly string[]; onProgress?: (share: number) => void },
-): Promise<Segment[] | null> {
+  options: { dir: string; seconds: number; safe: readonly string[]; speakers?: boolean; onProgress?: (share: number) => void },
+): Promise<Heard | null> {
   if (!(await speechReady())) return null
   const seconds = Math.max(1, options.seconds)
   const from = ['-v', 'error', '-nostdin', '-y', ...options.safe, '-t', String(seconds), '-i', input, '-vn', '-ac', '1', '-ar', '16000']
@@ -164,9 +170,9 @@ export async function listen(
       const file = join(options.dir, 'speech.raw')
       await run('ffmpeg', [...from, '-f', 's16le', file], limits)
       const started = Date.now()
-      const segments = await localSegments(file, options.onProgress)
+      const heard = await hear(file, options.speakers ?? false, options.onProgress)
       if (seconds > 60) pace = pace * 0.6 + ((Date.now() - started) / 1000 / seconds) * 0.4
-      return segments
+      return heard
     }
     const whole = join(options.dir, 'speech.mp3')
     await run('ffmpeg', [...from, '-b:a', '40k', whole], limits)
@@ -179,7 +185,7 @@ export async function listen(
       segments.push(...(await apiPiece(part, at)))
       options.onProgress?.(Math.min(1, (at + 600) / seconds))
     }
-    return segments.filter((s) => s.text)
+    return { segments: segments.filter((s) => s.text), shares: [] }
   } catch (err) {
     console.warn('Speech recognition failed:', err)
     return null
@@ -188,6 +194,10 @@ export async function listen(
 
 const stamp = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`
 
-/** The transcript with times, for the AI and for people. */
-export const withTimes = (segments: Segment[]) => segments.map((s) => `[${stamp(s.start)}] ${s.text}`).join('\n')
-export const plainText = (segments: Segment[]) => segments.map((s) => s.text).join(' ').replace(/\s+/g, ' ').trim()
+/** The transcript with times (and voices, when there are several), for the AI and for people. */
+export const withTimes = ({ segments, shares }: Heard) =>
+  [
+    ...(shares.length > 1 ? [`(voices, told apart by sound: ${shares.map((share, i) => `דובר ${i + 1} spoke about ${Math.round(share * 100)}%`).join(', ')})`] : []),
+    ...segments.map((s) => `[${stamp(s.start)}] ${s.speaker ? `דובר ${s.speaker}: ` : ''}${s.text}`),
+  ].join('\n')
+export const plainText = ({ segments }: Heard) => segments.map((s) => s.text).join(' ').replace(/\s+/g, ' ').trim()

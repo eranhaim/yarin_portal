@@ -215,6 +215,24 @@ function AdminShell({ me, onLogout }: { me: AdminIdentity; onLogout: () => void 
           ))}
         </div>
       </header>
+      {status && !status.ai.ok && (
+        <div className="adm-alert" role="alert">
+          <Icon name="alert" size={18} />
+          <span>
+            <strong>{status.ai.reason === 'credit' ? 'נגמר הקרדיט ב-Anthropic.' : status.ai.reason === 'key' ? 'המפתח של Anthropic לא עובד.' : 'הבינה המלאכותית לא מחוברת.'}</strong> המאמנים והבוחן מושהים, ועבודות של
+            לקוחות מגיעות אליכם לבדיקה.{' '}
+            {status.ai.reason === 'credit' && (
+              <>
+                אחרי טעינה ב-
+                <a href="https://console.anthropic.com/settings/billing" target="_blank" rel="noreferrer">
+                  console.anthropic.com
+                </a>{' '}
+                הכול חוזר לבד תוך כמה דקות.
+              </>
+            )}
+          </span>
+        </div>
+      )}
       <main className="adm-main">
         <InboxContext.Provider value={inbox}>
           <Routes>

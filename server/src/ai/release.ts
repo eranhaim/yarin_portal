@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { env } from '../env.ts'
 import { BOT_KEYS, BotTestRun, COACH_PERSONAS, getSetting, putSetting, type BotKey, type CoachPersona } from '../models/Game.ts'
-import { aiEnabled } from './claude.ts'
+import { aiWorks } from './claude.ts'
 import { COACHES, coachBase, coachSession, evaluationSystem } from './coaches.ts'
 import { methodFor } from './knowledge.ts'
 import { casesOf } from './lab/cases.ts'
@@ -14,6 +14,8 @@ import { REVIEW_REPLY_SYSTEM, REVIEW_SYSTEM } from './prompts.ts'
 export const PASS_RATE = 0.85
 
 type Release = { version: string; code: string; method: string; at: string; by: string }
+/** closed: an admin closed the bot by hand, so nothing opens it but an admin. */
+type Stored = Release | { closed: true } | null
 
 const isCoach = (bot: BotKey): bot is CoachPersona => (COACH_PERSONAS as readonly string[]).includes(bot)
 
@@ -45,13 +47,13 @@ export function forgetReleases(): void {
   cache.clear()
 }
 
-/** The release that customers meet, or null when the bot is closed. */
+/** The release that customers meet, or null when the bot is closed (or the AI is paused). */
 async function openRelease(bot: BotKey): Promise<Release | null> {
-  if (!aiEnabled) return null
+  if (!aiWorks()) return null
   const known = cache.get(bot)
   if (known && Date.now() - known.at < FRESH_MS) return known.release
-  const stored = await getSetting<Release | null>(`bot-release:${bot}`, null)
-  const release = stored?.code === codeOf(bot) ? stored : null
+  const stored = await getSetting<Stored>(`bot-release:${bot}`, null)
+  const release = stored && 'code' in stored && stored.code === codeOf(bot) ? stored : null
   cache.set(bot, { at: Date.now(), release })
   return release
 }
@@ -71,7 +73,7 @@ export async function releaseBot(bot: BotKey, now: { version: string; method: st
 }
 
 export async function closeBot(bot: BotKey): Promise<void> {
-  await putSetting(`bot-release:${bot}`, null)
+  await putSetting(`bot-release:${bot}`, { closed: true } satisfies Stored)
   forgetReleases()
 }
 
@@ -83,14 +85,16 @@ export async function botStatuses() {
   return Promise.all(
     BOT_KEYS.map(async (bot) => {
       const { version } = await botNow(bot)
-      const [release, latest, forVersion] = await Promise.all([
-        getSetting<Release | null>(`bot-release:${bot}`, null),
+      const [stored, latest, forVersion] = await Promise.all([
+        getSetting<Stored>(`bot-release:${bot}`, null),
         BotTestRun.findOne({ bot }).sort({ createdAt: -1 }),
         BotTestRun.findOne({ bot, version, status: 'done' }).sort({ createdAt: -1 }),
       ])
+      const release = stored && 'code' in stored ? stored : null
       return {
         bot,
         version,
+        closedByHand: Boolean(stored && 'closed' in stored),
         tests: casesOf(bot).length,
         released: release !== null && release.code === codeOf(bot),
         // Open, but the lessons changed since: the new knowledge waits for its tests.

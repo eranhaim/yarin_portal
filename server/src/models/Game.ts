@@ -220,6 +220,10 @@ const lessonNoteSchema = new Schema(
     moments: { type: [new Schema({ at: Number, title: String }, { _id: false })], default: [] },
     /** For the AI coaches and the examiner: Yarin and Oren's method, as they teach it. */
     method: { type: String, default: '', maxlength: 20_000 },
+    /** Text of the slides and the worksheet, as material for the note. */
+    slides: { type: String, default: '', maxlength: 60_000 },
+    /** The material changed after the note was written; the caretaker writes it again. */
+    stale: { type: Boolean, default: false },
     /** The full transcript with times: [{ start, end, text }]. */
     transcript: {
       type: [new Schema({ start: Number, end: Number, text: String }, { _id: false })],

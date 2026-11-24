@@ -428,7 +428,7 @@ function CoachChat({ id }: { id: string }) {
         )}
       </form>
 
-      {call && <VoiceCall name={other} opening={session.messages.filter((m) => m.role === 'assistant').at(-1)?.text ?? ''} onSay={say} onClose={() => setCall(false)} />}
+      {call && <VoiceCall name={other} color={meta.color} opening={session.messages.filter((m) => m.role === 'assistant').at(-1)?.text ?? ''} onSay={say} onClose={() => setCall(false)} />}
 
       {picking && (
         <WorkPicker

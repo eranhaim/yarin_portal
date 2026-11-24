@@ -178,7 +178,7 @@ function CoachCard({ coach, busy, onStart, onChanged }: { coach: CoachInfo; busy
         </div>
       ) : (
         <p className="coach-card__closed">
-          <Icon name="shield" size={18} /> המאמן בבדיקות איכות. הוא ייפתח כשיעבור את כולן.
+          <Icon name={coach.paused ? 'clock' : 'shield'} size={18} /> {coach.paused ? 'המאמנים בהפסקה קצרה. חזרו מאוחר יותר.' : 'המאמן בבדיקות איכות. הוא ייפתח כשיעבור את כולן.'}
         </p>
       )}
 

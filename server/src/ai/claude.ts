@@ -50,13 +50,46 @@ export class AiError extends Error {
 
 function requireClient(): Anthropic {
   if (!client) throw new AiError(503, 'הבינה המלאכותית עוד לא מחוברת. פנו לירין.')
+  if (outage) throw new AiError(503, PAUSED)
   return client
+}
+
+// The account can run out of credit, or its key can stop working. Then nothing of the AI works until a person fixes
+// it, so the rest of the program is told: the examiner's work goes to people, and the coaches are paused.
+type Outage = { since: Date; reason: 'credit' | 'key' }
+let outage: Outage | null = null
+
+export const aiWorks = () => aiEnabled && outage === null
+export const aiHealth = () => ({ enabled: aiEnabled, ok: aiWorks(), reason: outage?.reason ?? null, since: outage?.since ?? null })
+
+const PAUSED = 'הבוטים בהפסקה קצרה. כל השאר עובד, ועבודות שמגישים מגיעות לירין ולאורן.'
+
+function stopped(reason: Outage['reason']): AiError {
+  if (!outage) console.error(`The AI is paused: ${reason === 'credit' ? 'the account is out of credit' : 'the key does not work'}`)
+  outage = { since: outage?.since ?? new Date(), reason }
+  return new AiError(503, PAUSED)
+}
+
+/** Asks if the AI works (one token): at the start, and during an outage. */
+export async function probeAi(): Promise<boolean> {
+  if (!client) return false
+  try {
+    await client.messages.create({ model: env.AI_MODEL, max_tokens: 1, messages: [{ role: 'user', content: 'ok' }] })
+    if (outage) console.log('The AI works again.')
+    outage = null
+  } catch (err) {
+    if (err instanceof Anthropic.BadRequestError && /credit balance/i.test(err.message)) stopped('credit')
+    else if (err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError) stopped('key')
+    else outage = null // Busy or offline: the next real call will say.
+  }
+  return outage === null
 }
 
 function translateError(err: unknown): never {
   if (err instanceof AiError) throw err
+  if (err instanceof Anthropic.BadRequestError && /credit balance/i.test(err.message)) throw stopped('credit')
+  if (err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError) throw stopped('key')
   if (err instanceof Anthropic.RateLimitError) throw new AiError(503, 'יש עומס על הבוט. נסו שוב בעוד דקה.')
-  if (err instanceof Anthropic.AuthenticationError) throw new AiError(503, 'הבינה המלאכותית לא מוגדרת נכון. פנו לירין.')
   if (err instanceof Anthropic.BadRequestError) {
     console.error('Claude request rejected:', err.message)
     throw new AiError(502, 'הבוט לא הצליח לענות על הבקשה הזו.')

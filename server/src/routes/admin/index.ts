@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { aiHealth } from '../../ai/claude.ts'
 import { z } from 'zod'
 import { accountFingerprint, currentAdmin, isOwnerPassword, OWNER, ownerFingerprint, requireAdmin } from '../../auth/admin.ts'
 import { DUMMY_HASH, verifyPassword } from '../../auth/password.ts'
@@ -77,7 +78,7 @@ adminRouter.get('/status', async (_req, res) => {
     Customer.estimatedDocumentCount(),
     Plan.estimatedDocumentCount(),
   ])
-  res.json({ db: dbState(), storage, customers, plans })
+  res.json({ db: dbState(), storage, customers, plans, ai: aiHealth() })
 })
 
 adminRouter.use('/customers', customersRouter)

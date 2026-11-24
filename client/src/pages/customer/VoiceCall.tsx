@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import { Icon } from '../../components/Icon'
 import { errorMessage } from '../../lib/api'
 import { canRecord, clock, newRecognition, speak, stopSpeaking, transcribeVoice, useHebrewVoice, useRecorder, type Recognition } from '../../lib/voice'
@@ -8,6 +9,7 @@ import { canRecord, clock, newRecognition, speak, stopSpeaking, transcribeVoice,
 
 type Props = {
   name: string
+  color: string
   /** The last thing that was said to the customer. */
   opening: string
   /** Sends what the customer said; returns the answer. */
@@ -19,7 +21,7 @@ type Phase = 'speaking' | 'listening' | 'thinking' | 'waiting'
 
 const PHASE: Record<Phase, string> = { speaking: 'מדבר', listening: 'מקשיב לכם', thinking: 'חושב', waiting: 'בהמתנה' }
 
-export function VoiceCall({ name, opening, onSay, onClose }: Props) {
+export function VoiceCall({ name, color, opening, onSay, onClose }: Props) {
   const voice = useHebrewVoice()
   const recorder = useRecorder()
   const [phase, setPhase] = useState<Phase>('waiting')
@@ -149,8 +151,9 @@ export function VoiceCall({ name, opening, onSay, onClose }: Props) {
     onCloseRef.current = onClose
   })
 
-  return (
-    <div className="call" role="dialog" aria-modal="true" aria-label={`שיחה קולית עם ${name}`}>
+  // On the body: a page that animates in would hold a fixed element inside itself.
+  return createPortal(
+    <div className="call" role="dialog" aria-modal="true" aria-label={`שיחה קולית עם ${name}`} style={{ '--c': color } as CSSProperties}>
       <header>
         <strong>{name}</strong>
         <time>{clock(seconds)}</time>
@@ -176,6 +179,7 @@ export function VoiceCall({ name, opening, onSay, onClose }: Props) {
           <small>סיום השיחה</small>
         </button>
       </footer>
-    </div>
+    </div>,
+    document.body,
   )
 }

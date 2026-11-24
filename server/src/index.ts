@@ -1,5 +1,6 @@
-import { env } from './env.ts'
+import { env, isProduction } from './env.ts'
 import { app } from './app.ts'
+import { startCaretaker } from './ai/caretaker.ts'
 import { closeStaleRuns } from './ai/lab/run.ts'
 import { warmUpSpeech } from './ai/speech.ts'
 import { connectDb, disconnectDb } from './db.ts'
@@ -10,6 +11,8 @@ await connectDb()
 await migrate()
 await closeStaleRuns()
 warmUpSpeech()
+// On a developer's computer the tests run only by hand: every run costs money.
+if (isProduction) startCaretaker()
 
 const server = app.listen(env.PORT, () => {
   console.log(`API listening on port ${env.PORT} (${env.NODE_ENV})`)

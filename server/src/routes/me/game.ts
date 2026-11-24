@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto'
 import { Router } from 'express'
 import { z } from 'zod'
 import { businessFile } from '../../ai/businessFile.ts'
-import { AiError, aiEnabled, sendAiError, useAiQuota } from '../../ai/claude.ts'
+import { AiError, aiWorks, sendAiError, useAiQuota } from '../../ai/claude.ts'
 import { readFiles } from '../../ai/files.ts'
 import { methodOfTask } from '../../ai/knowledge.ts'
 import { settleScore, verdictFor } from '../../ai/prompts.ts'
@@ -228,7 +228,7 @@ gameRouter.post('/tasks/:taskId/review', async (req, res) => {
   if (!found) return
   const { task, plan } = found
   if (!(await botReleased('reviewer'))) {
-    res.status(503).json({ error: aiEnabled ? 'הבוחן בבדיקות איכות. ירין ואורן יעברו על העבודה.' : 'הבוחן עוד לא מחובר. ירין ואורן יעברו על העבודה.' })
+    res.status(503).json({ error: aiWorks() ? 'הבוחן בבדיקות איכות. ירין ואורן יעברו על העבודה.' : 'הבוחן בהפסקה קצרה. ירין ואורן יעברו על העבודה.' })
     return
   }
   const response = await findResponse(customer, task.id)

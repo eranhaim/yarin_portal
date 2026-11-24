@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { BotTestRun, CoachSession, KnowledgeItem, WorksheetResponse, type BotKey } from '../../models/Game.ts'
-import { aiJson, AiError } from '../claude.ts'
+import { aiJson, AiError, aiWorks } from '../claude.ts'
 import { botNow, forgetReleases, releaseBot, runPassed } from '../release.ts'
 import { casesOf, type LabCase, type LabOutput } from './cases.ts'
 
@@ -52,6 +52,8 @@ async function runCase(test: LabCase, method: string) {
       const checks = await judge(test, output)
       return { id: test.id, title: test.title, critical: test.critical, passed: checks.every((c) => c.passed), checks, output: output.text.slice(0, 6000) }
     } catch (err) {
+      // Without the AI there is nothing to test: the whole run stops, and no test counts as failed.
+      if (!aiWorks()) throw err
       // A busy API is not a bad bot: try twice more before the test counts as failed.
       if (attempt < 3) {
         await new Promise((resolve) => setTimeout(resolve, attempt * 5000))
@@ -102,7 +104,7 @@ export async function startRun(bot: BotKey, by: string): Promise<string> {
   void work()
     .catch(async (err: unknown) => {
       console.error(`Lab run of ${bot} failed`, err)
-      await BotTestRun.updateOne({ _id: run._id }, { $set: { status: 'failed', error: 'ההרצה נכשלה. נסו שוב.', finishedAt: new Date() } }).catch(() => undefined)
+      await BotTestRun.updateOne({ _id: run._id }, { $set: { status: 'failed', error: aiWorks() ? 'ההרצה נכשלה. נסו שוב.' : 'הבינה המלאכותית מושהית (קרדיט או מפתח). הבדיקות ירוצו לבד כשהיא תחזור.', finishedAt: new Date() } }).catch(() => undefined)
     })
     .finally(() => running.delete(bot))
   return run.id as string

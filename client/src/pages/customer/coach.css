@@ -402,7 +402,7 @@
   padding: 12px;
   border: 1px solid var(--line-strong);
   border-radius: 18px;
-  background: rgba(19, 24, 32, 0.96);
+  background: #141a23;
   box-shadow: 0 18px 44px -18px rgba(0, 0, 0, 0.9);
 }
 
@@ -851,5 +851,43 @@
 @media (max-width: 760px) {
   .coach-chat__call {
     order: 3;
+  }
+}
+
+@media (max-width: 760px) {
+  .composer {
+    z-index: 5;
+    gap: 4px;
+    padding: 8px 10px;
+  }
+
+  .cx .composer .textarea {
+    min-height: 44px;
+    padding: 8px 6px;
+  }
+
+  .composer__bar {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* Only the icons: the names stay for screen readers. */
+  .composer__bar .btn {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 0;
+  }
+
+  .composer__bar .btn--game {
+    width: 48px;
+    height: 48px;
+  }
+
+  .composer__bar .composer__dot {
+    width: 15px;
+    height: 15px;
   }
 }

@@ -3,7 +3,7 @@ import { Router } from 'express'
 import { isValidObjectId } from 'mongoose'
 import { z } from 'zod'
 import { businessFile } from '../../ai/businessFile.ts'
-import { aiEnabled, aiJson } from '../../ai/claude.ts'
+import { aiWorks, aiJson } from '../../ai/claude.ts'
 import { methodOfTask } from '../../ai/knowledge.ts'
 import { BRIEF_SYSTEM, briefSchema } from '../../ai/prompts.ts'
 import { dayKey, XP } from '../../game/rules.ts'
@@ -138,7 +138,7 @@ planRouter.get('/tasks/:taskId/brief', async (req, res) => {
   if (!found) return
   const { task } = found
   // Before the diagnosis there is nothing personal to say.
-  if (!customer.track || !aiEnabled || task.practice === 'diagnosis') {
+  if (!customer.track || !aiWorks() || task.practice === 'diagnosis') {
     res.json({ brief: null })
     return
   }

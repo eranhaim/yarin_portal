@@ -3,7 +3,7 @@ import express, { Router, type Response } from 'express'
 import { isValidObjectId } from 'mongoose'
 import { z } from 'zod'
 import { businessFile } from '../../ai/businessFile.ts'
-import { AiError, sendAiError, useAiQuota, type AiContent } from '../../ai/claude.ts'
+import { AiError, aiWorks, sendAiError, useAiQuota, type AiContent } from '../../ai/claude.ts'
 import { COACHES, DIFFICULTIES, dimensionsOf, modeOf, SCENARIOS, sessionScore } from '../../ai/coaches.ts'
 import { kindOf, readFiles, type WorkFile } from '../../ai/files.ts'
 import { voiceText } from '../../ai/media.ts'
@@ -64,7 +64,7 @@ async function findSession(customer: CustomerDoc, id: string, res: Response): Pr
 
 async function requireReleased(persona: CoachPersona, res: Response): Promise<boolean> {
   if (await botReleased(persona)) return true
-  res.status(503).json({ error: 'המאמן הזה בבדיקות איכות וייפתח בקרוב.' })
+  res.status(503).json({ error: aiWorks() ? 'המאמן הזה בבדיקות איכות וייפתח בקרוב.' : 'המאמנים בהפסקה קצרה. נסו שוב מאוחר יותר.' })
   return false
 }
 
@@ -91,6 +91,7 @@ coachRouter.get('/coach', async (_req, res) => {
         persona,
         title: coach.title,
         available: await botReleased(persona),
+        paused: !aiWorks(),
         modes: coach.modes.map((m) => ({ key: m.key, label: m.label, description: m.description, roleplay: Boolean(m.roleplay), needsWork: Boolean(m.needsWork), scored: dimensionsOf(persona, m.key).length > 0 })),
         sessions: own.length,
         scores: scored.slice(-12).map((s) => ({ id: s.id as string, score: s.evaluation!.score!, at: s.evaluation!.at ?? s.updatedAt })),

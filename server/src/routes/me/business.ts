@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { z } from 'zod'
-import { aiEnabled, aiJson } from '../../ai/claude.ts'
+import { aiWorks, aiJson } from '../../ai/claude.ts'
 import { DIAGNOSIS_SYSTEM, diagnosisSchema } from '../../ai/prompts.ts'
 import {
   bottleneckLabel,
@@ -95,7 +95,7 @@ businessRouter.post('/diagnosis', async (req, res) => {
   const answers = body.answers as DiagnosisAnswers
   const route = routeFrom(answers)
   let words = plainExplanation(route)
-  if (aiEnabled) {
+  if (aiWorks()) {
     try {
       const out = await aiJson({
         schema: diagnosisSchema,
