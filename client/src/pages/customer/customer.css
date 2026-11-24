@@ -500,6 +500,12 @@
 }
 
 @media (max-width: 760px) {
+  /* A blurred header would hold the fixed navigation inside itself; the navigation belongs at the bottom. */
+  .cx-top {
+    background: #0b0e13;
+    backdrop-filter: none;
+  }
+
   .cx-top__inner {
     gap: 8px;
     padding: 0 10px;

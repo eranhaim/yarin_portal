@@ -1,15 +1,15 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { DISTRICT_COLORS, missionLabel } from '../../lib/game'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { DEFAULT_LOOK, DISTRICT_COLORS, missionLabel } from '../../lib/game'
 import type { Host, Look, MyPlan } from '../../lib/types'
-import { Board } from '../Board'
 import { Icon } from '../Icon'
 import { SceneBoundary } from '../mascot/Mascot'
 import { prefersReducedMotion, supportsWebGL } from '../mascot/webgl'
-import type { CityDistrict, CityMission } from './types'
+import { FullMap, MiniMap } from './GpsMap'
+import type { CityDistrict, CityMission, Quality } from './types'
 import './CityMap.css'
 
-// The customer's journey as a city: each level is a district, each task a mission on the main road.
-// The 3D scene loads lazily; without WebGL the 2D board shows instead.
+// The customer's journey as a city: the street in 3D, and the navigation map. The 3D part loads on its own; without
+// WebGL (or when it fails) the map takes its place, so nobody loses the way.
 
 const CityScene = lazy(() => import('./CityScene'))
 
@@ -17,24 +17,48 @@ type Props = {
   plan: MyPlan
   look: Look | null
   hosts: Host[]
-  /** The last mission the customer saw, so their character walks from there. */
+  /** The last mission the customer saw, so their car drives from there. */
   walkFrom: number
   onArrive: () => void
   /** The customer pressed the main button: drive up to the mission, then call onLeft. */
   leaving: boolean
   onLeft: () => void
   onSelectMission: (chapterId: string, taskId: string) => void
+  /** The button of the current focus. */
+  onGo: () => void
 }
 
-export function CityMap({ plan, look, hosts, walkFrom, onArrive, leaving, onLeft, onSelectMission }: Props) {
+const QUALITY_KEY = 'yp:city-quality'
+
+/** A first guess; the scene lowers it when the picture is slow, and the visit remembers. */
+function startQuality(): Quality {
+  try {
+    const saved = sessionStorage.getItem(QUALITY_KEY)
+    if (saved === 'low' || saved === 'medium') return saved
+  } catch {
+    // Storage can be blocked.
+  }
+  const touch = window.matchMedia('(pointer: coarse)').matches
+  const memory = (navigator as { deviceMemory?: number }).deviceMemory ?? 8
+  if (touch) return memory < 4 ? 'low' : 'medium'
+  return memory < 4 ? 'medium' : 'high'
+}
+
+export function CityMap({ plan, look, hosts, walkFrom, onArrive, leaving, onLeft, onSelectMission, onGo }: Props) {
   const [canRender] = useState(supportsWebGL)
   const [reducedMotion] = useState(prefersReducedMotion)
-  const labels = useRef<(HTMLElement | null)[]>([])
+  const [quality, setQuality] = useState<Quality>(startQuality)
+  const [ready, setReady] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const [mapOpen, setMapOpen] = useState(false)
+  const [narrow, setNarrow] = useState(() => window.innerWidth <= 760)
   const position = plan.level.position
 
   useEffect(() => {
-    if (leaving) onLeft()
-  }, [leaving, onLeft])
+    const onResize = () => setNarrow(window.innerWidth <= 760)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   const { districts, missions } = useMemo(() => {
     const districts: CityDistrict[] = plan.chapters.map((c, i) => ({
@@ -63,103 +87,92 @@ export function CityMap({ plan, look, hosts, walkFrom, onArrive, leaving, onLeft
     return { districts, missions }
   }, [plan, position])
 
-  const select = (m: CityMission) => {
-    if (m.state === 'locked') return
-    onSelectMission(plan.chapters[m.chapterIndex]!.id, m.id)
-  }
+  const closeMap = useCallback(() => setMapOpen(false), [])
+  const focusTitle = missionLabel(plan.focus.title, 1).label
 
-  const fallback = (
-    <div className="city__fallback">
-      <Board
-        chapters={plan.chapters.map((c) => ({
-          id: c.id,
-          title: c.title,
-          state: c.state,
-          tasks: c.tasks.map((t) => ({ id: t.id, title: t.title, started: t.started, completed: t.completed, submitted: t.submissions.length > 0 })),
-        }))}
-        title={plan.title}
-        player={{ id: 'me', name: '', avatarUrl: null, position }}
-        onSelectTask={(ci, ti) => onSelectMission(plan.chapters[ci]!.id, plan.chapters[ci]!.tasks[ti]!.id)}
-      />
-    </div>
+  const lower = useCallback((q: Quality) => {
+    setQuality(q)
+    try {
+      sessionStorage.setItem(QUALITY_KEY, q)
+    } catch {
+      // Storage can be blocked.
+    }
+  }, [])
+
+  const select = useCallback(
+    (m: CityMission) => {
+      if (m.state !== 'locked') onSelectMission(plan.chapters[m.chapterIndex]!.id, m.id)
+    },
+    [onSelectMission, plan.chapters],
   )
 
-  if (!canRender) return fallback
+  // Without the 3D street there is no drive to wait for.
+  const street = canRender && !failed
+  useEffect(() => {
+    if (leaving && (!street || !ready)) onLeft()
+  }, [leaving, street, ready, onLeft])
+
+  const shift = useMemo(() => (narrow ? { x: 0, y: 0.22 } : { x: 0.12, y: 0.02 }), [narrow])
 
   return (
     <div className="city">
-      <div className="city__sky" aria-hidden="true">
-        <span className="city__sun" />
-      </div>
-      <SceneBoundary fallback={fallback}>
-        <Suspense fallback={<div className="city__loading">טוענים את העיר…</div>}>
-          <CityScene
-            districts={districts}
-            missions={missions}
-            playerLook={look}
-            playerAt={position}
-            walkFrom={Math.min(walkFrom, position)}
-            hosts={hosts}
-            reducedMotion={reducedMotion}
-            onArrive={onArrive}
-            onSelectMission={select}
-            labels={labels}
-          />
-        </Suspense>
-      </SceneBoundary>
-
-      {/* HTML labels; CityScene moves them to their 3D anchors every frame. */}
-      <div className="city__labels">
-        {districts.map((d) => (
-          <div
-            key={d.id}
-            ref={(el) => {
-              labels.current[d.index] = el
-            }}
-            className={`city__district${d.state === 'locked' ? ' is-locked' : ''}`}
-            style={{ '--c': d.color } as CSSProperties}
-          >
-            <small>שלב {d.index + 1}</small>
-            {d.title}
-            {d.state === 'locked' && <Icon name="lock" size={14} />}
+      {street ? (
+        <SceneBoundary fallback={<Fallback onShow={() => setFailed(true)} />}>
+          <Suspense fallback={null}>
+            <CityScene
+              districts={districts}
+              missions={missions}
+              playerLook={look ?? DEFAULT_LOOK}
+              playerAt={position}
+              driveFrom={Math.min(walkFrom, position)}
+              hosts={hosts}
+              reducedMotion={reducedMotion}
+              quality={quality}
+              onQuality={lower}
+              leaving={leaving}
+              onLeft={onLeft}
+              onArrive={onArrive}
+              onSelectMission={select}
+              onReady={() => setReady(true)}
+              shift={shift}
+            />
+          </Suspense>
+          <div className={`city__curtain${ready ? ' is-open' : ''}${leaving ? ' is-leaving' : ''}`} aria-hidden="true">
+            {!ready && <span className="spinner" />}
           </div>
-        ))}
-        {missions.map((m) => {
-          const i = districts.length + m.index
-          return (
-            <button
-              key={m.id}
-              type="button"
-              ref={(el) => {
-                labels.current[i] = el
-              }}
-              className={`city__mission city__mission--${m.state}`}
-              onClick={() => select(m)}
-              disabled={m.state === 'locked'}
-              title={m.title}
-            >
-              <b>{m.state === 'done' ? <Icon name="check" size={13} /> : m.badge}</b>
-              <span>{m.title}</span>
-            </button>
-          )
-        })}
-        <div
-          ref={(el) => {
-            labels.current[districts.length + missions.length] = el
+        </SceneBoundary>
+      ) : (
+        <FullMap districts={districts} missions={missions} playerAt={position} focusTitle={focusTitle} onGo={onGo} onSelect={select} />
+      )}
+
+      {street && (
+        <>
+          <MiniMap districts={districts} missions={missions} playerAt={position} onOpen={() => setMapOpen(true)} />
+          <p className="city__hint">
+            <Icon name="compass" size={14} /> גררו כדי להסתכל מסביב
+          </p>
+        </>
+      )}
+      {street && mapOpen && (
+        <FullMap
+          districts={districts}
+          missions={missions}
+          playerAt={position}
+          focusTitle={focusTitle}
+          onGo={() => {
+            setMapOpen(false)
+            onGo()
           }}
-          className="city__hq"
-        >
-          המטה של ירין ואורן
-        </div>
-        <div
-          ref={(el) => {
-            labels.current[districts.length + missions.length + 1] = el
-          }}
-          className="city__finish"
-        >
-          <Icon name="trophy" size={16} /> הבוס
-        </div>
-      </div>
+          onSelect={select}
+          onClose={closeMap}
+        />
+      )}
     </div>
   )
+}
+
+/** The scene failed: show the map instead. */
+function Fallback({ onShow }: { onShow: () => void }) {
+  useEffect(onShow, [onShow])
+  return null
 }

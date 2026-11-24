@@ -59,6 +59,7 @@ function PlanCity({ plan }: { plan: MyPlan }) {
         hosts={hosts}
         walkFrom={lastSeen}
         leaving={leaving}
+        onGo={go}
         onLeft={() => navigate(focusPath(plan))}
         onArrive={save}
         onSelectMission={(chapterId, taskId) => navigate(`/level/${chapterId}/task/${taskId}`)}
