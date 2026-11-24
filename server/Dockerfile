@@ -7,7 +7,7 @@ RUN apk add --no-cache build-base cmake git
 RUN git clone --quiet --depth 1 --branch v1.8.2 https://github.com/ggml-org/whisper.cpp /src
 RUN cmake -S /src -B /build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
       -DCMAKE_EXE_LINKER_FLAGS="-static" -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_SERVER=OFF \
-      -DGGML_NATIVE=OFF -DGGML_AVX=ON -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON \
+      -DGGML_OPENMP=OFF -DGGML_NATIVE=OFF -DGGML_AVX=ON -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON \
   && cmake --build /build -j 2 --target whisper-cli quantize \
   && strip /build/bin/whisper-cli /build/bin/quantize
 
