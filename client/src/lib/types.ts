@@ -378,7 +378,7 @@ export type GameSummary = {
 // ---------- Coaches ----------
 
 export type CoachPersona = 'sales' | 'scripts' | 'mental'
-export type CoachModeInfo = { key: string; label: string; description: string; roleplay: boolean; needsWork: boolean }
+export type CoachModeInfo = { key: string; label: string; description: string; roleplay: boolean; needsWork: boolean; scored: boolean }
 export type CoachDimension = { key: string; label: string; score: number; evidence: string; better: string }
 export type CoachEvaluation = {
   score: number | null
@@ -398,6 +398,11 @@ export type CoachSession = {
   title: string
   scenario: { label: string; difficulty: string; clientName: string; card: ClientCard | null } | null
   messages: CoachMessage[]
+  /** Whether the session ends with a score. */
+  scored: boolean
+  /** The coach listens to a recording: how far (0-1), and about how many seconds it takes. */
+  pending: { since: string; progress: number; eta: number } | null
+  failed: string | null
   evaluation: CoachEvaluation | null
   updatedAt: string
 }
@@ -533,4 +538,31 @@ export type LabBot = {
   running: boolean
   latest: LabRun | null
   list: { id: string; title: string; critical: boolean; checks: number }[]
+}
+
+// ---------- The brain (material from Yarin and Oren) ----------
+
+export type BrainItem = {
+  id: string
+  title: string
+  /** Empty = all coaches. */
+  personas: CoachPersona[]
+  source: 'text' | 'file' | 'voice'
+  fileName: string
+  status: 'uploading' | 'processing' | 'ready' | 'failed'
+  progress: number
+  error: string
+  enabled: boolean
+  method: string
+  raw: string
+  by: string
+  createdAt: string
+}
+export type BrainCoach = { key: CoachPersona; title: string; released: boolean; waiting: boolean; running: boolean }
+export type Brain = {
+  enabled: boolean
+  speech: 'api' | 'local' | 'off'
+  size: { lessons: number; lessonWords: number; items: number; itemWords: number }
+  items: BrainItem[]
+  coaches: BrainCoach[]
 }

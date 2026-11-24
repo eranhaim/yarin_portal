@@ -1,6 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
-import { Die } from '../components/Board'
 import { Icon } from '../components/Icon'
 import { Logo } from '../components/Logo'
 import { Mascot } from '../components/mascot/Mascot'
@@ -53,30 +52,30 @@ export function LoginPage() {
           <Logo light />
           <div className="login__pitch">
             <h1>
-              המסע העסקי שלכם,
+              לומדים, מתרגלים,
               <br />
-              <span>משימה אחרי משימה.</span>
+              <span>ורואים את העסק גדל.</span>
             </h1>
-            <p>התחברו כדי להמשיך בתוכנית עם ירין ואורן: שלבים ברורים, סרטוני הדרכה וכל הכלים שצריך בדרך.</p>
+            <p>סימולטור להתפתחות עסקית עם ירין ואורן: בכל רגע משימה אחת ברורה, משוב על עבודה אמיתית, ושני מדדים: הלמידה והעסק.</p>
           </div>
           <ul className="login__perks">
             <li>
-              <span style={{ background: 'var(--g1)' }}>
-                <Icon name="map" size={18} />
+              <span>
+                <Icon name="route" size={18} />
               </span>
-              עיר משחק עם שלבים ומשימות
+              מסלול אישי לפי העסק שלכם
             </li>
             <li>
-              <span style={{ background: 'var(--g2)' }}>
-                <Icon name="video" size={18} />
+              <span>
+                <Icon name="users" size={18} />
               </span>
-              סרטוני הדרכה בכל שלב
+              שלושה מאמנים שמכירים את העסק ובודקים עבודה
             </li>
             <li>
-              <span style={{ background: 'var(--g4)' }}>
-                <Icon name="file" size={18} />
+              <span>
+                <Icon name="chart" size={18} />
               </span>
-              קבצים ותבניות במקום אחד
+              לידים, שיחות, הכנסה ורווח, חודש אחרי חודש
             </li>
           </ul>
         </div>
@@ -99,17 +98,12 @@ export function LoginPage() {
           onAnimationEnd={() => setShaking(false)}
           noValidate
         >
-          <div className="login__card-band">
-            <Die value={6} />
-            <span>כניסה למשחק</span>
-            <Die value={4} />
-          </div>
           <div className="login__card-body">
             <div className="login__mobile-logo">
               <Logo />
             </div>
             <h2>ברוכים הבאים</h2>
-            <p className="login__sub">התחברו כדי להמשיך במסע.</p>
+            <p className="login__sub">התחברו כדי להמשיך מאיפה שעצרתם.</p>
 
             {error && (
               <div className="alert alert--error" role="alert">
@@ -160,7 +154,7 @@ export function LoginPage() {
             </label>
 
             <button type="submit" className="btn btn--game btn--lg btn--block login__submit" disabled={busy}>
-              {busy ? <span className="spinner" /> : <Icon name="dice" size={20} />}
+              {busy && <span className="spinner" />}
               {busy ? 'מתחברים…' : 'כניסה'}
             </button>
 

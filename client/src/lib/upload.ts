@@ -21,7 +21,7 @@ const TYPES_BY_EXTENSION: Record<string, string> = {
   csv: 'text/csv',
 }
 
-function contentTypeOf(file: File, kind: Asset['kind'] = 'file'): string {
+export function contentTypeOf(file: File, kind: Asset['kind'] = 'file'): string {
   if (file.type) return file.type
   return TYPES_BY_EXTENSION[fileExtension(file.name)] ?? (kind === 'video' ? 'video/mp4' : 'application/octet-stream')
 }
@@ -29,7 +29,7 @@ function contentTypeOf(file: File, kind: Asset['kind'] = 'file'): string {
 type SignedUpload = { url: string; method: 'PUT'; headers: Record<string, string> }
 
 /** PUT with upload progress (fetch() cannot report upload progress). */
-function putFile(
+export function putFile(
   url: string,
   file: File,
   headers: Record<string, string>,

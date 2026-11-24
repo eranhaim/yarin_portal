@@ -13,6 +13,7 @@ import { adminsRouter } from './admins.ts'
 import { assetsRouter } from './assets.ts'
 import { customersRouter } from './customers.ts'
 import { adminGameRouter } from './game.ts'
+import { brainRouter } from './brain.ts'
 import { labRouter } from './lab.ts'
 import { lessonsRouter } from './lessons.ts'
 import { plansRouter } from './plans.ts'
@@ -86,5 +87,6 @@ adminRouter.use(assetsRouter)
 adminRouter.use(submissionsRouter)
 adminRouter.use(adminGameRouter)
 adminRouter.use(worksRouter)
+adminRouter.use(brainRouter)
 adminRouter.use(labRouter)
 adminRouter.use(lessonsRouter)

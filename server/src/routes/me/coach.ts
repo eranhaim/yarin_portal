@@ -3,20 +3,22 @@ import express, { Router, type Response } from 'express'
 import { isValidObjectId } from 'mongoose'
 import { z } from 'zod'
 import { businessFile } from '../../ai/businessFile.ts'
-import { sendAiError, useAiQuota, type AiContent } from '../../ai/claude.ts'
-import { COACHES, DIFFICULTIES, modeOf, SCENARIOS, sessionScore } from '../../ai/coaches.ts'
+import { AiError, sendAiError, useAiQuota, type AiContent } from '../../ai/claude.ts'
+import { COACHES, DIFFICULTIES, dimensionsOf, modeOf, SCENARIOS, sessionScore } from '../../ai/coaches.ts'
 import { kindOf, readFiles, type WorkFile } from '../../ai/files.ts'
+import { voiceText } from '../../ai/media.ts'
 import { approvedMethod, botReleased } from '../../ai/release.ts'
 import { castClient, coachReply, evaluateSession, transcriptOf, type CoachTurn, type Scenario } from '../../ai/sessions.ts'
+import { speechEta, speechMode } from '../../ai/speech.ts'
 import { answersAsText, type Worksheet, type WorksheetAnswers } from '../../game/content.ts'
 import { dayKey, XP } from '../../game/rules.ts'
 import { award } from '../../game/xp.ts'
 import { parseBody } from '../../http.ts'
-import type { CustomerDoc } from '../../models/Customer.ts'
+import { Customer, type CustomerDoc } from '../../models/Customer.ts'
 import { COACH_PERSONAS, CoachMemory, CoachSession, WorksheetResponse, type CoachPersona, type CoachSessionDoc } from '../../models/Game.ts'
 import { learnerTasks } from '../../models/Plan.ts'
 import { Submission } from '../../models/Submission.ts'
-import { putObject, storageEnabled } from '../../storage.ts'
+import { headObject, putObject, signedUploadUrl, storageEnabled } from '../../storage.ts'
 import { safeFileName } from '../../uploads.ts'
 import { customerOf, planOf } from './shared.ts'
 
@@ -26,6 +28,13 @@ export const coachRouter = Router()
 
 const MAX_MESSAGES = 60
 const MAX_ATTACHMENT = 60 * 1024 * 1024
+/** A recording of a long call, or a video; the browser sends it straight to the storage. */
+const MAX_RECORDING = 600 * 1024 * 1024
+const MAX_VOICE = 12 * 1024 * 1024
+/** A recording that takes longer than this was cut off. */
+const PENDING_LIMIT_MS = 4 * 60 * 60_000
+
+const isPending = (session: CoachSessionDoc) => Boolean(session.pending?.since && Date.now() - session.pending.since.getTime() < PENDING_LIMIT_MS)
 
 type StoredScenario = Scenario & { label: string; difficultyLabel: string }
 
@@ -39,6 +48,9 @@ function sessionView(session: CoachSessionDoc) {
     // The client's hidden details show only after the session is scored.
     scenario: scenario ? { label: scenario.label, difficulty: scenario.difficultyLabel, clientName: scenario.card.name, card: session.evaluation ? scenario.card : null } : null,
     messages: session.messages.map((m) => ({ role: m.role, text: m.text, at: m.at, attachments: m.attachments.map((a) => ({ id: a.id ?? '', name: a.name ?? '' })) })),
+    scored: dimensionsOf(session.persona, session.mode).length > 0,
+    pending: isPending(session) ? { since: session.pending!.since, progress: session.pending!.progress, eta: session.pending!.eta } : null,
+    failed: session.failed || null,
     evaluation: session.evaluation ?? null,
     updatedAt: session.updatedAt,
   }
@@ -79,7 +91,7 @@ coachRouter.get('/coach', async (_req, res) => {
         persona,
         title: coach.title,
         available: await botReleased(persona),
-        modes: coach.modes.map((m) => ({ key: m.key, label: m.label, description: m.description, roleplay: Boolean(m.roleplay), needsWork: Boolean(m.needsWork) })),
+        modes: coach.modes.map((m) => ({ key: m.key, label: m.label, description: m.description, roleplay: Boolean(m.roleplay), needsWork: Boolean(m.needsWork), scored: dimensionsOf(persona, m.key).length > 0 })),
         sessions: own.length,
         scores: scored.slice(-12).map((s) => ({ id: s.id as string, score: s.evaluation!.score!, at: s.evaluation!.at ?? s.updatedAt })),
         dimensions: coach.dimensions.map((d) => {
@@ -93,6 +105,7 @@ coachRouter.get('/coach', async (_req, res) => {
   )
   res.json({
     coaches,
+    voice: speechMode() !== 'off',
     scenarios: SCENARIOS.map((s) => ({ key: s.key, label: s.label })),
     difficulties: DIFFICULTIES.map((d) => ({ key: d.key, label: d.label })),
     sessions: sessions.slice(0, 40).map((s) => ({
@@ -217,6 +230,52 @@ coachRouter.post('/coach/:id/attachments', express.raw({ type: () => true, limit
   res.status(201).json({ attachment: { id, name, contentType, size: data.length, key } })
 })
 
+/** A place for a large file (a call recording): the browser uploads it straight to the storage. */
+coachRouter.post('/coach/:id/uploads', async (req, res) => {
+  const body = parseBody(z.object({ name: z.string().trim().min(1).max(200), contentType: z.string().max(200).default(''), size: z.number().int().positive().max(MAX_RECORDING, 'אפשר להעלות הקלטה עד 600MB') }), req, res)
+  if (!body) return
+  const customer = customerOf(res)
+  const session = await findSession(customer, req.params.id, res)
+  if (!session) return
+  if (!storageEnabled) {
+    res.status(503).json({ error: 'אחסון הקבצים לא מוגדר' })
+    return
+  }
+  const contentType = body.contentType || 'application/octet-stream'
+  if (kindOf({ name: body.name, contentType }) !== 'media') {
+    res.status(415).json({ error: 'קובץ גדול יכול להיות רק הקלטה או סרטון.' })
+    return
+  }
+  const id = randomUUID()
+  const key = `coach/${customer.id as string}/${session.id as string}/${id}-${safeFileName(body.name)}`
+  res.status(201).json({
+    attachment: { id, name: body.name, contentType, size: body.size, key },
+    upload: { url: await signedUploadUrl(key, contentType), headers: { 'Content-Type': contentType } },
+  })
+})
+
+/** Speech to text for the message box: the customer talks instead of typing. */
+coachRouter.post('/voice', express.raw({ type: () => true, limit: MAX_VOICE }), async (req, res) => {
+  const customer = customerOf(res)
+  const data: unknown = req.body
+  if (!Buffer.isBuffer(data) || data.length < 500) {
+    res.status(400).json({ error: 'ההקלטה ריקה. נסו שוב.' })
+    return
+  }
+  if (speechMode() === 'off') {
+    res.status(503).json({ error: 'זיהוי הדיבור לא פעיל בשרת. אפשר להקליד.' })
+    return
+  }
+  try {
+    await useAiQuota(customer._id)
+    const text = await voiceText(data)
+    if (text === null) throw new AiError(502, 'לא הצלחנו לפענח את ההקלטה. נסו שוב או הקלידו.')
+    res.json({ text })
+  } catch (err) {
+    if (!sendAiError(err, res)) throw err
+  }
+})
+
 /** The customer's own work that a coach can open: handed-in worksheets and files. */
 coachRouter.get('/coach-work', async (_req, res) => {
   const customer = customerOf(res)
@@ -244,7 +303,7 @@ coachRouter.get('/coach-work', async (_req, res) => {
 const messageBody = z.object({
   text: z.string().trim().max(8000, 'ההודעה ארוכה מדי').default(''),
   attachments: z
-    .array(z.object({ id: z.uuid(), name: z.string().max(200), contentType: z.string().max(200), size: z.number().int().positive().max(MAX_ATTACHMENT), key: z.string().max(500) }))
+    .array(z.object({ id: z.uuid(), name: z.string().max(200), contentType: z.string().max(200), size: z.number().int().positive().max(MAX_RECORDING), key: z.string().max(500) }))
     .max(4, 'עד ארבעה קבצים בהודעה')
     .default([]),
   work: z
@@ -276,45 +335,140 @@ async function collectWork(customer: CustomerDoc, session: CoachSessionDoc, body
   return { files, text }
 }
 
+/** Texts of recordings from earlier in the session, so the coach can come back to them. */
+const recordingsOf = (m: CoachSessionDoc['messages'][number], limit: number) =>
+  m.attachments.flatMap((x) => (x.text ? [`[תמלול של "${x.name}"]\n${x.text.slice(0, limit)}`] : [])).join('\n\n')
+
+/**
+ * Answers the last message of a session (the customer's). A recording is heard first, which can take minutes, so
+ * the caller decides if to wait for this.
+ */
+async function answer(customer: CustomerDoc, sessionId: string, files: (WorkFile & { id: string })[]): Promise<{ skipped: string[] }> {
+  const session = (await CoachSession.findById(sessionId))!
+  const persona = session.persona
+  const scenario = session.scenario as StoredScenario | null
+  const last = session.messages.at(-1)!
+  let shown = 0
+  const opened = files.length
+    ? await readFiles(files, {
+        long: true,
+        onProgress: (share) => {
+          if (share - shown < 0.04) return
+          shown = share
+          void CoachSession.updateOne({ _id: sessionId, pending: { $ne: null } }, { $set: { 'pending.progress': share } }).catch(() => undefined)
+        },
+      })
+    : null
+  const content: string | AiContent = opened ? [{ type: 'text', text: last.text }, ...opened.content] : last.text
+  const history: CoachTurn[] = session.messages.slice(0, -1).map((m) => ({
+    role: m.role as 'user' | 'assistant',
+    // Files of earlier messages are not sent again; their names and the texts of recordings stay.
+    content: m.attachments.length ? `${m.text}\n[צורפו: ${m.attachments.map((x) => x.name).join(', ')}]${recordingsOf(m, 24_000) ? `\n\n${recordingsOf(m, 24_000)}` : ''}` : m.text,
+  }))
+  const [method, business] = await Promise.all([scenario ? '' : approvedMethod(persona), businessFile(customer, { persona })])
+  const reply = await coachReply({ persona, mode: session.mode, scenario, method, business, history: [...history, { role: 'user', content }] })
+  if (opened) {
+    for (const file of last.attachments) {
+      const text = opened.transcripts[file.name ?? '']
+      if (text) file.text = text.slice(0, 78_000)
+    }
+    session.markModified('messages')
+  }
+  session.messages.push({ role: 'assistant', text: reply, attachments: [], at: new Date() })
+  session.pending = null
+  session.failed = ''
+  await session.save()
+  if (persona === 'mental') {
+    await award(customer._id, { skill: 'mindset', points: XP.mentalSession, refKey: `mental:${dayKey()}`, label: 'שיחה עם המאמן המנטלי' })
+  }
+  return { skipped: opened?.skipped ?? [] }
+}
+
+/** The same, after the request ended. A failure is written on the session, and the customer can try again. */
+async function answerLater(customerId: string, sessionId: string, files: (WorkFile & { id: string })[]): Promise<void> {
+  try {
+    const customer = await Customer.findById(customerId)
+    if (customer) await answer(customer, sessionId, files)
+  } catch (err) {
+    if (!(err instanceof AiError)) console.error('A coach could not answer', err)
+    const why = err instanceof AiError ? err.message : 'המאמן לא הצליח לענות. נסו שוב.'
+    await CoachSession.updateOne({ _id: sessionId }, { $set: { pending: null, failed: why } }).catch(() => undefined)
+  }
+}
+
+const hasRecording = (files: WorkFile[]) => files.some((f) => kindOf(f) === 'media')
+/** Speech is usually 8-16 kB a second; a video is much heavier. A rough guess is enough for a waiting message. */
+const secondsGuess = (files: WorkFile[]) =>
+  files.filter((f) => kindOf(f) === 'media').reduce((sum, f) => sum + f.size / (f.contentType.startsWith('video/') ? 350_000 : 12_000), 0)
+
 coachRouter.post('/coach/:id/message', async (req, res) => {
-  const body = parseBody(messageBody, req, res)
+  const body = parseBody(messageBody.extend({ seconds: z.number().min(0).max(20_000).optional() }), req, res)
   if (!body) return
   const customer = customerOf(res)
   const session = await findSession(customer, req.params.id, res)
   if (!session) return
-  const persona = session.persona
-  if (!(await requireReleased(persona, res))) return
+  if (!(await requireReleased(session.persona, res))) return
   if (!body.text && body.attachments.length === 0 && body.work.length === 0) {
     res.status(400).json({ error: 'כתבו הודעה או צרפו עבודה' })
+    return
+  }
+  if (isPending(session)) {
+    res.status(409).json({ error: 'המאמן עוד מקשיב להקלטה. התשובה תופיע כאן.' })
     return
   }
   if (session.messages.length >= MAX_MESSAGES) {
     res.status(409).json({ error: 'השיחה הזו ארוכה מדי. פתחו שיחה חדשה.' })
     return
   }
-  const scenario = session.scenario as StoredScenario | null
   try {
     await useAiQuota(customer._id)
     const { files, text } = await collectWork(customer, session, body)
-    const opened = files.length ? await readFiles(files) : null
-    const said = `${body.text}${text}`.trim() || 'צירפתי את העבודה.'
-    const content: string | AiContent = opened ? [{ type: 'text', text: said }, ...opened.content] : said
-    const history: CoachTurn[] = session.messages.map((m) => ({
-      role: m.role as 'user' | 'assistant',
-      // Files of earlier messages are not sent again; their names stay, and the coach already described them.
-      content: m.attachments.length ? `${m.text}\n[צורפו: ${m.attachments.map((a) => a.name).join(', ')}]` : m.text,
-    }))
-    const [method, business] = await Promise.all([scenario ? '' : approvedMethod(persona), businessFile(customer, { persona })])
-    const reply = await coachReply({ persona, mode: session.mode, scenario, method, business, history: [...history, { role: 'user', content }] })
-    session.messages.push(
-      { role: 'user', text: said.slice(0, 12_000), attachments: files.map(({ id, name, contentType, size, key }) => ({ id, name, contentType, size, key })), at: new Date() },
-      { role: 'assistant', text: reply, attachments: [], at: new Date() },
-    )
-    await session.save()
-    if (persona === 'mental') {
-      await award(customer._id, { skill: 'mindset', points: XP.mentalSession, refKey: `mental:${dayKey()}`, label: 'שיחה עם המאמן המנטלי' })
+    for (const file of files.filter((f) => f.size > MAX_ATTACHMENT)) {
+      if (!(await headObject(file.key))) throw new AiError(409, 'ההעלאה לא הגיעה לאחסון. נסו שוב.')
     }
-    res.json({ session: sessionView(session), skipped: opened?.skipped ?? [] })
+    const said = `${body.text}${text}`.trim() || (hasRecording(files) ? 'צירפתי הקלטה.' : 'צירפתי את העבודה.')
+    session.messages.push({ role: 'user', text: said.slice(0, 12_000), attachments: files.map(({ id, name, contentType, size, key }) => ({ id, name, contentType, size, key })), at: new Date() })
+    session.failed = ''
+    if (hasRecording(files)) {
+      session.pending = { since: new Date(), progress: 0, eta: speechEta(Math.min(7200, body.seconds ?? secondsGuess(files))) }
+      await session.save()
+      void answerLater(customer.id as string, session.id as string, files)
+      res.status(202).json({ session: sessionView(session), skipped: [] })
+      return
+    }
+    await session.save()
+    try {
+      const { skipped } = await answer(customer, session.id as string, files)
+      res.json({ session: sessionView((await CoachSession.findById(session.id))!), skipped })
+    } catch (err) {
+      // The message comes back to the box, so it does not stay in the session without an answer.
+      await CoachSession.updateOne({ _id: session._id }, { $pop: { messages: 1 } })
+      throw err
+    }
+  } catch (err) {
+    if (!sendAiError(err, res)) throw err
+  }
+})
+
+/** Tries again to answer the last message (a recording that could not be heard, or a cut in the middle). */
+coachRouter.post('/coach/:id/retry', async (req, res) => {
+  const customer = customerOf(res)
+  const session = await findSession(customer, req.params.id, res)
+  if (!session) return
+  if (!(await requireReleased(session.persona, res))) return
+  const last = session.messages.at(-1)
+  if (!last || last.role !== 'user' || isPending(session)) {
+    res.status(409).json({ error: 'אין הודעה שמחכה לתשובה.' })
+    return
+  }
+  try {
+    await useAiQuota(customer._id)
+    const files = last.attachments.map((x) => ({ id: x.id ?? '', name: x.name ?? '', contentType: x.contentType ?? '', size: x.size ?? 0, key: x.key ?? '' }))
+    session.pending = { since: new Date(), progress: 0, eta: speechEta(Math.min(7200, secondsGuess(files))) }
+    session.failed = ''
+    await session.save()
+    void answerLater(customer.id as string, session.id as string, files)
+    res.status(202).json({ session: sessionView(session), skipped: [] })
   } catch (err) {
     if (!sendAiError(err, res)) throw err
   }
@@ -327,26 +481,31 @@ coachRouter.post('/coach/:id/evaluate', async (req, res) => {
   if (!session) return
   const persona = session.persona
   if (!(await requireReleased(persona, res))) return
-  if (session.messages.filter((m) => m.role === 'user').length < 2) {
-    res.status(409).json({ error: 'כתבו לפחות שתי הודעות לפני שמסיימים.' })
+  // A recorded call is enough work for a score; a chat needs a few turns.
+  const withRecording = session.messages.some((m) => m.attachments.some((x) => x.text))
+  if (isPending(session) || session.messages.filter((m) => m.role === 'user').length < (withRecording ? 1 : 2)) {
+    res.status(409).json({ error: isPending(session) ? 'המאמן עוד מקשיב להקלטה.' : 'כתבו לפחות שתי הודעות לפני שמסיימים.' })
     return
   }
   const coach = COACHES[persona]
   const scenario = session.scenario as StoredScenario | null
   try {
     await useAiQuota(customer._id)
+    const recordings = session.messages.map((m) => recordingsOf(m, 60_000)).filter(Boolean).join('\n\n')
+    const areas = dimensionsOf(persona, session.mode)
     const out = await evaluateSession({
       persona,
       mode: session.mode,
       scenario,
       business: await businessFile(customer, { persona }),
+      ...(recordings ? { work: [{ type: 'text' as const, text: `The recordings they brought (automatic transcripts, without speaker names):\n<recordings>\n${recordings.slice(0, 80_000)}\n</recordings>` }] } : {}),
       transcript: transcriptOf(persona, Boolean(scenario), session.messages.map((m) => ({ role: m.role, text: m.text }))),
     })
-    const dimensions = coach.dimensions.flatMap((d) => {
+    const dimensions = areas.flatMap((d) => {
       const found = out.dimensions.find((x) => x.key === d.key)
       return found ? [{ key: d.key, label: d.label, score: Math.max(-1, Math.min(100, Math.round(found.score))), evidence: found.evidence, better: found.better }] : []
     })
-    const score = coach.dimensions.length ? sessionScore(dimensions) : null
+    const score = areas.length ? sessionScore(dimensions) : null
     const first = !session.evaluation
     session.set('evaluation', {
       score,

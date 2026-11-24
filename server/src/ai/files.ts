@@ -13,6 +13,8 @@ export type ReadFiles = {
   /** Names of the files that were opened, and of the ones that could not be. */
   read: string[]
   skipped: string[]
+  /** What is said in every video and recording, by file name. */
+  transcripts: Record<string, string>
 }
 
 const MB = 1024 * 1024
@@ -31,7 +33,7 @@ export function kindOf(file: Pick<WorkFile, 'name' | 'contentType'>): Kind {
   if (ext === 'pdf' || file.contentType === 'application/pdf') return 'pdf'
   if (['docx', 'pptx', 'xlsx'].includes(ext)) return 'office'
   if (['txt', 'md', 'csv', 'tsv', 'json', 'srt', 'vtt'].includes(ext) || file.contentType.startsWith('text/')) return 'text'
-  if (file.contentType.startsWith('video/') || file.contentType.startsWith('audio/') || ['mp4', 'mov', 'm4v', 'webm', 'mkv', 'mp3', 'm4a', 'wav', 'ogg', 'opus'].includes(ext)) return 'media'
+  if (file.contentType.startsWith('video/') || file.contentType.startsWith('audio/') || ['mp4', 'mov', 'm4v', 'webm', 'mkv', 'mp3', 'm4a', 'wav', 'ogg', 'oga', 'opus', 'aac', 'amr', '3gp', 'flac', 'wma', 'caf', 'aiff'].includes(ext)) return 'media'
   return 'other'
 }
 
@@ -105,9 +107,17 @@ export function officeText(data: Uint8Array, name: string): string {
     .join('\n\n')
 }
 
-const clip = (text: string) => (text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT)}\n[…the rest is cut]` : text)
+const clip = (text: string, max = MAX_TEXT) => (text.length > max ? `${text.slice(0, max)}\n[…the rest is cut]` : text)
+/** A call of an hour is about this long. */
+const MAX_CALL = 70_000
 
-async function readOne(file: WorkFile): Promise<AiContent | null> {
+export type ReadOptions = {
+  /** Read whole recordings (calls), with times, and not only the first minutes. */
+  long?: boolean
+  onProgress?: (share: number) => void
+}
+
+async function readOne(file: WorkFile, options: ReadOptions, transcripts: Record<string, string>): Promise<AiContent | null> {
   const kind = kindOf(file)
   const note = file.note ? ` The participant's note: ${file.note}` : ''
   const label = (text: string): AiContent[number] => ({ type: 'text', text })
@@ -126,8 +136,10 @@ async function readOne(file: WorkFile): Promise<AiContent | null> {
 
   if (kind === 'media') {
     if (file.size > MAX_VIDEO || !(await ffmpegAvailable())) return null
-    const media = await readMedia(await signedUrl(file.key))
-    const parts: AiContent = [label(`File "${file.name}" (video or recording, ${Math.round(media.seconds)} seconds).${note}`)]
+    const media = await readMedia(await signedUrl(file.key), options)
+    if (media.transcript) transcripts[file.name] = media.transcript
+    const length = media.seconds >= 60 ? `${Math.floor(media.seconds / 60)}:${String(Math.round(media.seconds % 60)).padStart(2, '0')} minutes` : `${Math.round(media.seconds)} seconds`
+    const parts: AiContent = [label(`File "${file.name}" (video or recording, ${length}${media.cut ? ', only the beginning was read' : ''}).${note}`)]
     media.sheets.forEach((sheet, i) => {
       parts.push(label(i === 0 && media.sheets.length > 1 ? 'The first 4 seconds, two frames per second:' : 'Frames across the whole video, in order:'))
       parts.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: sheet.toString('base64') } })
@@ -137,7 +149,7 @@ async function readOne(file: WorkFile): Promise<AiContent | null> {
         media.transcript === null
           ? 'The speech could not be transcribed. Judge only what you see, and say so.'
           : media.transcript
-            ? `What is said in it (automatic transcript, small mistakes are possible):\n${clip(media.transcript)}`
+            ? `What is said in it (automatic transcript, small mistakes are possible${options.long ? '; minutes:seconds in brackets; the speakers are not marked, so work out who says what' : ''}):\n${clip(media.transcript, options.long ? MAX_CALL : MAX_TEXT)}`
             : 'Nobody speaks in it.',
       ),
     )
@@ -156,13 +168,13 @@ async function readOne(file: WorkFile): Promise<AiContent | null> {
 }
 
 /** The newest files, as message content. A file that cannot be opened is named in "skipped". */
-export async function readFiles(files: WorkFile[]): Promise<ReadFiles> {
-  const result: ReadFiles = { content: [], read: [], skipped: [] }
+export async function readFiles(files: WorkFile[], options: ReadOptions = {}): Promise<ReadFiles> {
+  const result: ReadFiles = { content: [], read: [], skipped: [], transcripts: {} }
   const chosen = files.slice(-MAX_FILES)
   result.skipped.push(...files.slice(0, -MAX_FILES).map((f) => f.name))
   for (const file of chosen) {
     try {
-      const parts = await readOne(file)
+      const parts = await readOne(file, options, result.transcripts)
       if (parts) {
         result.content.push(...parts)
         result.read.push(file.name)

@@ -383,12 +383,12 @@ function World(props: CitySceneProps) {
       <>
         {/* One of the hosts waits at the mission; the player stands by the car until they drive. */}
         {host && (
-          <group position={layout.point(target + 2.6, ROAD.half + 0.9, 0.16)} rotation={[0, here.angle + 0.35, 0]} scale={0.7}>
+          <group position={layout.point(target + 2.6, ROAD.half + 0.9, 0.1)} rotation={[0, here.angle + 0.35, 0]} scale={0.7}>
             <SoftCharacter look={host.look} pose="wave" reducedMotion={reducedMotion} />
           </group>
         )}
         {parked && (
-          <group position={layout.point(parkedAt + 1.6, ROAD.half + 1.1, 0.16)} rotation={[0, beside.angle + 0.35, 0]} scale={0.66}>
+          <group position={layout.point(parkedAt + 1.6, ROAD.half + 1.1, 0.1)} rotation={[0, beside.angle + 0.35, 0]} scale={0.66}>
             <SoftCharacter look={playerLook} pose="idle" reducedMotion={reducedMotion} />
           </group>
         )}

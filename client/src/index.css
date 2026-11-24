@@ -7,21 +7,21 @@
 
 :root {
   --font-ui: 'Rubik Variable', system-ui, 'Segoe UI', Arial, sans-serif;
-  --font-display: 'Suez One', 'Rubik Variable', serif;
+  --font-display: 'Rubik Variable', system-ui, 'Segoe UI', Arial, sans-serif;
   /* Poster-style condensed Hebrew, for the game's big titles and HUD numbers. */
-  --font-gta: 'Karantina', 'Suez One', 'Rubik Variable', sans-serif;
+  --font-gta: 'Rubik Variable', system-ui, 'Segoe UI', Arial, sans-serif;
 
   /* Ink and paper */
-  --ink: #1f1a17;
-  --ink-2: #3a332d;
-  --paper: #fffaf0;
-  --paper-2: #fbf3df;
-  --paper-3: #f3e7c8;
-  --cream-line: #e6d7b0;
+  --ink: #18202b;
+  --ink-2: #384353;
+  --paper: #ffffff;
+  --paper-2: #f6f8fb;
+  --paper-3: #edf1f6;
+  --cream-line: #e3e9f0;
 
   /* Game table (page background of the customer area) */
-  --table-1: #22325e;
-  --table-2: #172246;
+  --table-1: #1b2430;
+  --table-2: #0d1218;
 
   /* Group colors (one per level on the board) */
   --g1: #e8573f;
@@ -34,10 +34,10 @@
   --g8: #f08a2c;
 
   /* Accents */
-  --red: #e8573f;
-  --red-dark: #b9402c;
-  --gold: #f2b632;
-  --gold-dark: #c98f14;
+  --red: #18202b;
+  --red-dark: #0d131b;
+  --gold: #f0b84a;
+  --gold-dark: #b98419;
   --teal: #2f9e8f;
   --blue: #3b8fd9;
 
@@ -52,21 +52,21 @@
   --info-bg: #e2edfb;
 
   /* Surfaces */
-  --bg: #f4ecd8;
+  --bg: #f3f5f8;
   --surface: var(--paper);
   --surface-2: var(--paper-2);
   --surface-3: var(--paper-3);
-  --border: #d9c9a3;
-  --border-strong: var(--ink);
-  --text: #2c2621;
+  --border: #dde4ec;
+  --border-strong: #c3cdd9;
+  --text: #2a3443;
   --text-strong: var(--ink);
-  --text-muted: #6f6457;
+  --text-muted: #647285;
 
   --focus: 0 0 0 3px rgba(59, 143, 217, 0.45);
-  --line: 2px solid var(--ink);
-  --shadow-sm: 2px 2px 0 var(--ink);
-  --shadow-md: 4px 4px 0 var(--ink);
-  --shadow-lg: 6px 6px 0 var(--ink), 0 24px 48px -16px rgba(0, 0, 0, 0.35);
+  --line: 1px solid var(--border-strong);
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.07);
+  --shadow-md: 0 10px 24px -16px rgba(16, 24, 40, 0.28);
+  --shadow-lg: 0 28px 60px -24px rgba(16, 24, 40, 0.4);
   --radius-sm: 6px;
   --radius: 10px;
   --radius-lg: 14px;
@@ -109,7 +109,7 @@ h4 {
   margin: 0;
   color: var(--text-strong);
   font-family: var(--font-display);
-  font-weight: 400;
+  font-weight: 800;
   line-height: 1.25;
 }
 
@@ -152,7 +152,7 @@ textarea {
   transform: scaleX(-1);
 }
 
-/* ---------- Buttons (cardboard pieces) ---------- */
+/* ---------- Buttons ---------- */
 
 .btn {
   display: inline-flex;
@@ -184,8 +184,8 @@ textarea {
 }
 
 .btn:active:not(:disabled) {
-  transform: translate(2px, 2px);
-  box-shadow: 0 0 0 var(--ink);
+  transform: translateY(1px);
+  box-shadow: none;
 }
 
 .btn:disabled {
@@ -203,13 +203,13 @@ textarea {
   background: var(--gold);
   color: var(--ink);
   font-family: var(--font-display);
-  font-weight: 400;
-  font-size: 1.1rem;
-  box-shadow: 3px 3px 0 var(--ink);
+  font-weight: 800;
+  font-size: 1.05rem;
+  box-shadow: var(--shadow-sm);
 }
 
 .btn--game:active:not(:disabled) {
-  transform: translate(3px, 3px);
+  transform: translateY(1px);
 }
 
 .btn--soft {
@@ -479,7 +479,7 @@ textarea {
   width: min(560px, calc(100vw - 24px));
   max-height: calc(100dvh - 32px);
   padding: 0;
-  border: 3px solid var(--ink);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   background: var(--paper);
   color: var(--text);
@@ -854,29 +854,24 @@ textarea {
 }
 
 .logo__mark {
-  display: inline-grid;
-  transform: rotate(-8deg);
-}
-
-.logo__mark .die {
-  width: 36px;
-  padding: 6px;
-  gap: 2px;
-  border-width: 2.5px;
-  background: var(--red);
-  box-shadow: 2px 2px 0 var(--ink);
-}
-
-.logo__mark .die i.is-on {
-  background: #fff;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(150deg, #ffd27c, #e9a23a);
+  color: #1b1405;
+  font-size: 1rem;
+  font-weight: 900;
 }
 
 .logo__text {
   display: flex;
   flex-direction: column;
   font-family: var(--font-display);
-  font-size: 1.3rem;
-  line-height: 1.05;
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.15;
 }
 
 .logo__text small {
@@ -887,7 +882,7 @@ textarea {
 }
 
 .logo--light .logo__text {
-  text-shadow: 2px 2px 0 var(--ink);
+  text-shadow: none;
 }
 
 .logo--light .logo__text small {
@@ -960,7 +955,7 @@ textarea {
 
 .btn:hover:not(:disabled):not(:active):not(.btn--ghost) {
   transform: translateY(-1px);
-  box-shadow: 3px 3px 0 var(--ink);
+  box-shadow: var(--shadow-sm);
 }
 
 .modal[open] .modal__body > * {

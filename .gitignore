@@ -68,3 +68,6 @@ uploads/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# The speech model (downloads at run time)
+.models/

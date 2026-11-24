@@ -160,7 +160,7 @@ export function StreetLife({ layout, range }: { layout: CityLayout; range: [numb
     const lights: Placement[] = []
     // The gate of a closed district stands on the median; palms keep away from it.
     const gates = layout.spans.map((s) => s.from + 4)
-    for (let d = from; d < to; d += 15) if (free(d, 7) && !gates.some((g) => d > g - 24 && d < g + 3)) palms.push(at(d, 0, 0.92 + random() * 0.32))
+    for (let d = from; d < to; d += 15) if (free(d, 7) && !gates.some((g) => d > g - 46 && d < g + 3)) palms.push(at(d, 0, 0.92 + random() * 0.32))
     for (const side of [-1, 1]) {
       for (let d = from + (side > 0 ? 5 : 12); d < to; d += 17) {
         if (!free(d, 4)) continue

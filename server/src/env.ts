@@ -31,14 +31,13 @@ const schema = z.object({
   // Safety cap: AI requests per customer per day.
   AI_DAILY_LIMIT: z.coerce.number().int().positive().default(120),
 
-  // Hebrew speech recognition for homework videos (whisper.cpp). Off until both are set.
-  SPEECH_BIN: optional(z.string()),
+  // Hebrew speech to text, for videos, call recordings and voice. A fast service (any OpenAI-compatible
+  // transcription address) when both are set:
+  SPEECH_API_URL: optional(z.url()),
+  SPEECH_API_KEY: optional(z.string()),
+  SPEECH_API_MODEL: z.preprocess(blankToUndefined, z.string().default('whisper-large-v3')),
+  // … or a small Hebrew model on this server: the folder that keeps it (about 72 MB, downloads once). Empty = off.
   SPEECH_MODEL_DIR: optional(z.string()),
-  SPEECH_QUANTIZE_BIN: optional(z.string()),
-  SPEECH_MODEL_URL: z.preprocess(
-    blankToUndefined,
-    z.url().default('https://huggingface.co/ivrit-ai/whisper-large-v3-turbo-ggml/resolve/main/ggml-model.bin'),
-  ),
 })
 
 const parsed = schema.safeParse(process.env)

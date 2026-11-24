@@ -109,7 +109,7 @@ export function coachReply(input: {
     ...(session ? [{ text: session }] : []),
     { text: roleplay ? `The seller's business, as you would know it from their page and the first messages:\n${input.business.slice(0, 2500)}` : `# What you know about this participant and their business\n${input.business}` },
   ]
-  return aiText({ system, messages: startWithUser(input.history), effort: roleplay ? 'low' : 'medium', maxTokens: 4000 })
+  return aiText({ system, messages: startWithUser(input.history), effort: roleplay ? 'low' : 'medium', maxTokens: 8000 })
 }
 
 export type Evaluation = z.infer<typeof evaluationSchema>

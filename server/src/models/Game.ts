@@ -239,7 +239,8 @@ export const COACH_PERSONAS = ['sales', 'scripts', 'mental'] as const
 export type CoachPersona = (typeof COACH_PERSONAS)[number]
 
 const attachmentSchema = new Schema(
-  { id: String, name: String, contentType: String, size: Number, key: String },
+  // text: what is said in a recording, so the coach can come back to it later in the session.
+  { id: String, name: String, contentType: String, size: Number, key: String, text: { type: String, default: '', maxlength: 80_000 } },
   { _id: false },
 )
 
@@ -263,6 +264,13 @@ const coachSessionSchema = new Schema(
     /** Simulations: the scenario, the difficulty and the hidden details of the simulated client. */
     scenario: { type: Schema.Types.Mixed, default: null },
     messages: { type: [coachMessageSchema], default: [] },
+    /** The coach listens to a recording in the background: since when, how far, and about how long it takes. */
+    pending: {
+      type: new Schema({ since: Date, progress: { type: Number, default: 0 }, eta: { type: Number, default: 0 } }, { _id: false }),
+      default: null,
+    },
+    /** Why the last answer did not come. */
+    failed: { type: String, default: '' },
     evaluation: {
       type: new Schema(
         {
@@ -302,6 +310,37 @@ const coachMemorySchema = new Schema(
 coachMemorySchema.index({ customerId: 1, persona: 1 }, { unique: true })
 
 export const CoachMemory = model('CoachMemory', coachMemorySchema)
+
+// ---------- The brain: material from Yarin and Oren that the coaches learn ----------
+
+export const KNOWLEDGE_SOURCES = ['text', 'file', 'voice'] as const
+
+const knowledgeItemSchema = new Schema(
+  {
+    title: { type: String, required: true, maxlength: 200 },
+    /** The coaches that learn it; empty = all of them. */
+    personas: { type: [{ type: String, enum: COACH_PERSONAS }], default: [] },
+    source: { type: String, enum: KNOWLEDGE_SOURCES, required: true },
+    fileName: { type: String, default: '' },
+    contentType: { type: String, default: '' },
+    size: { type: Number, default: 0 },
+    key: { type: String, default: '' },
+    /** The text it came from: what was written, or what is said in a recording. */
+    raw: { type: String, default: '', maxlength: 400_000 },
+    /** What the coaches learn: short teaching notes. */
+    method: { type: String, default: '', maxlength: 30_000 },
+    status: { type: String, enum: ['uploading', 'processing', 'ready', 'failed'], default: 'processing' },
+    progress: { type: Number, default: 0 },
+    error: { type: String, default: '' },
+    enabled: { type: Boolean, default: true },
+    by: { type: String, default: '', maxlength: 120 },
+  },
+  { timestamps: true },
+)
+knowledgeItemSchema.index({ createdAt: -1 })
+
+export type KnowledgeItemDoc = HydratedDocument<InferSchemaType<typeof knowledgeItemSchema>>
+export const KnowledgeItem = model('KnowledgeItem', knowledgeItemSchema)
 
 // ---------- The coach lab: the fixed tests a bot must pass before customers meet it ----------
 

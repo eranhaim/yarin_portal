@@ -5,6 +5,7 @@ import { Logo } from '../../components/Logo'
 import { ADMIN_UNAUTHORIZED, api, errorMessage } from '../../lib/api'
 import type { AdminIdentity, AdminStatus } from '../../lib/types'
 import { AdminsPage } from './AdminsPage'
+import { BrainPage } from './BrainPage'
 import { CustomerDetailPage } from './CustomerDetailPage'
 import { CustomersPage } from './CustomersPage'
 import { HostsPage } from './HostsPage'
@@ -182,6 +183,9 @@ function AdminShell({ me, onLogout }: { me: AdminIdentity; onLogout: () => void 
               <Icon name="star" size={18} /> חבר מביא חבר
               {newLeads > 0 && <span className="adm-top__badge">{newLeads > 99 ? '99+' : newLeads}</span>}
             </NavLink>
+            <NavLink to="/admin/brain" className="adm-top__link">
+              <Icon name="brain" size={18} /> המוח
+            </NavLink>
             <NavLink to="/admin/lab" className="adm-top__link">
               <Icon name="shield" size={18} /> מאמנים
             </NavLink>
@@ -221,6 +225,7 @@ function AdminShell({ me, onLogout }: { me: AdminIdentity; onLogout: () => void 
             <Route path="plans/:id" element={<PlanEditorPage />} />
             <Route path="works" element={<WorksPage />} />
             <Route path="inbox" element={<InboxPage />} />
+            <Route path="brain" element={<BrainPage />} />
             <Route path="lab" element={<LabPage />} />
             <Route path="leads" element={<LeadsPage onChange={loadLeads} />} />
             <Route path="hosts" element={<HostsPage />} />

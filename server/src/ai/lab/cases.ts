@@ -18,6 +18,8 @@ import {
   WEAK_SCRIPT,
   WEAK_SCRIPT_SESSION,
   AVATAR_TASK,
+  BRAIN_NOTE,
+  CALL_TRANSCRIPT,
 } from './fixtures.ts'
 
 // The fixed tests of the examiner and the coaches. A bot meets customers only after its exact version passes.
@@ -69,10 +71,10 @@ const atMost = (limit: number): LabCheck => ({ text: `At most ${limit} words.`, 
 
 const scenario = (key: string, difficulty: string, card: ClientCard = CARD): Scenario => ({ key, difficulty, card })
 
-function talk(persona: 'sales' | 'scripts' | 'mental', mode: string, history: CoachTurn[], options: { scenario?: Scenario; business?: string } = {}) {
+function talk(persona: 'sales' | 'scripts' | 'mental', mode: string, history: CoachTurn[], options: { scenario?: Scenario; business?: string; learned?: string } = {}) {
   return async ({ method }: { method: string }): Promise<LabOutput> => {
-    const text = await coachReply({ persona, mode, scenario: options.scenario ?? null, method, business: options.business ?? BUSINESS, history })
-    return { situation: `Bot: ${persona} coach, mode "${mode}".${options.scenario ? ` The bot plays this client: ${JSON.stringify(options.scenario.card)}` : ''}\nKnown business facts:\n${options.business ?? BUSINESS}\n\nConversation so far:\n${said(history)}`, text }
+    const text = await coachReply({ persona, mode, scenario: options.scenario ?? null, method: options.learned ? `${options.learned}\n\n${method}` : method, business: options.business ?? BUSINESS, history })
+    return { situation: `Bot: ${persona} coach, mode "${mode}".${options.scenario ? ` The bot plays this client: ${JSON.stringify(options.scenario.card)}` : ''}\nKnown business facts:\n${options.business ?? BUSINESS}${options.learned ? `\n\nWhat the coach was taught (among other things):\n${options.learned}` : ''}\n\nConversation so far:\n${said(history)}`, text }
   }
 }
 
@@ -380,9 +382,33 @@ const SALES: LabCase[] = [
       return { situation: 'Evaluation', text: JSON.stringify(result.dimensions, null, 1), quotes: result.dimensions.filter((d) => d.score >= 0).map((d) => d.evidence), count: result.dimensions.length }
     },
   },
+  {
+    id: 's-recording',
+    title: 'ניתוח הקלטה של שיחה',
+    critical: true,
+    checks: [
+      hebrew,
+      { text: 'Understands that נועה is the seller and רונית is the client.' },
+      { text: 'Gives at least two times from the recording that match what was really said there.', test: (o) => (o.text.match(/\b\d{1,2}:\d{2}\b/g) ?? []).length >= 2 },
+      { text: 'Finds the decisive moments: the seller talked about herself before asking, gave a discount at once, or passed over the pain (lifting the daughter) and the fear to commit.' },
+      { text: 'Gives better sentences for those moments, and a ready message to send to the client now.' },
+      { text: 'Every sentence that it presents as said in the recording was really said there. (Known business facts and estimates of the share of talking are fine.)' },
+    ],
+    run: async ({ method }) => {
+      const text = await coachReply({
+        persona: 'sales',
+        mode: 'review',
+        scenario: null,
+        method,
+        business: BUSINESS,
+        history: [bot('בואו נעבור על שיחה אמיתית.'), { role: 'user', content: [{ type: 'text', text: 'זו שיחה שהקלטתי עם ליד. היא לא קנתה. נתח לי אותה' }, { type: 'text', text: CALL_TRANSCRIPT }] }],
+      })
+      return { situation: `Known business facts:\n${BUSINESS}\n\nThe participant (נועה, the seller) brought this recording and asked to analyze it:\n${CALL_TRANSCRIPT}`, text }
+    },
+  },
 ]
 
-// ---------- The script coach ----------
+// ---------- The marketer ----------
 
 const SCRIPTS: LabCase[] = [
   {
@@ -464,6 +490,76 @@ const SCRIPTS: LabCase[] = [
     critical: false,
     checks: [hebrew, { text: 'Uses the known audience and words (mothers after birth, lifting the baby, back pain) without asking who the audience is.' }, { text: 'Gives ideas that fit the goal of trust.' }],
     run: talk('scripts', 'write', [bot('על מה הסרטון?'), user('תן לי שלושה רעיונות לסרטוני אמון השבוע')]),
+  },
+  {
+    id: 'k-hooks',
+    title: 'עשרה הוקים שאפשר לצלם היום',
+    critical: false,
+    checks: [
+      hebrew,
+      { text: 'There are exactly ten numbered hooks.', test: (o) => [...o.text.matchAll(/^\s*\*{0,2}(\d{1,2})[.)]/gm)].filter((m) => Number(m[1]) <= 10).length >= 10 },
+      { text: 'The hooks come from at least six really different angles, not one idea in other words.' },
+      { text: 'Most hooks are short spoken Hebrew (up to about twelve words) and start from the viewer: mothers after birth, lifting the baby, back pain at night.' },
+      { text: 'No invented number, result, customer or testimonial.' },
+      { text: 'Marks the strongest ones, and ends with a question or a next step.' },
+    ],
+    run: talk('scripts', 'hookmaker', [bot('על מה הסרטון, ומה הלקוח מרגיש?'), user('סרטון לאימהות שהגב נתפס להן כשהן מרימות את התינוק בלילה. המטרה: שיכתבו לי. תתחיל')]),
+  },
+  {
+    id: 'k-messages',
+    title: 'מסר מרכזי שמתאים רק לעסק הזה',
+    critical: false,
+    checks: [
+      hebrew,
+      { text: 'Offers a core message (or two or three versions) that names this audience in a specific moment and a result they want.' },
+      { text: "Uses the customer's own words about lifting the baby without the back." },
+      { text: 'Does not invent proof; a missing proof is marked or asked for.' },
+      { text: 'Moves one step at a time: it asks to choose, or says what comes next.' },
+    ],
+    run: talk('scripts', 'messages', [bot('למי אתם מוכרים, ומה הוא אומר במילים שלו?'), user('תתחיל')]),
+  },
+  {
+    id: 'k-process',
+    title: 'רואה את כל התהליך: קודם החוליה החלשה',
+    critical: false,
+    checks: [
+      hebrew,
+      { text: 'Notices from the numbers that most leads (9 of 14) do not reach a call, and puts this before paid ads or more content.' },
+      { text: 'Gives one concrete thing to do now.' },
+      atMost(200),
+    ],
+    run: talk('scripts', 'ask', [bot('שאלו כל דבר על השיווק. מה הכי תקוע עכשיו?'), user('אני רוצה להתחיל לפרסם בממומן ולהביא פי שלוש פניות. איך עושים קמפיין?')]),
+  },
+  {
+    id: 'k-plan',
+    title: 'תוכנית שבוע שאפשר לבצע',
+    critical: false,
+    checks: [
+      hebrew,
+      { text: 'Fits three hours: at most three videos, and no daily posting marathon.' },
+      { text: 'Every video in the plan has a day, a hook in words and a call to action.' },
+      { text: 'Ties the plan to the goal or the bottleneck of this business.' },
+      { text: 'No invented results or customers.' },
+    ],
+    run: talk('scripts', 'plan', [bot('כמה זמן יש לכם לתוכן השבוע, ומה הכי חסר?'), user('שלוש שעות בשבוע. אנשים פונים אבל לא קונים')]),
+  },
+  {
+    id: 'k-brain',
+    title: 'עובד לפי מה שירין ואורן לימדו',
+    critical: true,
+    checks: [
+      hebrew,
+      { text: 'Uses the taught method by its names: „מבחן השכנה”, „מילה אחת החוצה” and „פתיחת הדלת”.', test: (o) => /השכנה/.test(o.text) && /מילה אחת/.test(o.text) && /הדלת/.test(o.text) },
+      { text: 'Applies the three filters in the taught order to this hook, instead of only listing them.' },
+    ],
+    run: talk('scripts', 'ask', [bot('שאלו כל דבר על השיווק.'), user('איך אני בודקת אם ההוק הזה טוב: „הגב שלך צועק כל לילה בשלוש”? תעבור איתי על השיטה שלכם שלב אחר שלב')], { learned: BRAIN_NOTE }),
+  },
+  {
+    id: 'k-unknown',
+    title: 'לא ממציא שיטה שלא לימדו',
+    critical: true,
+    checks: [hebrew, { text: 'Does not invent the content of a method with this name; says it does not know it from the program, or asks what they mean.' }, { text: 'Offers useful help anyway.' }],
+    run: talk('scripts', 'ask', [bot('שאלו כל דבר על השיווק.'), user('תסביר לי את „נוסחת 7 המראות” של ירין, זו שהוא לימד בשיעור')]),
   },
   {
     id: 'c-scores',

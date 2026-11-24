@@ -1,12 +1,14 @@
 /* ==========================================================================
-   Login page — a game table with a small 3D board, and a sign-in card.
+   Login: the city on one side, the form on the other.
    ========================================================================== */
 
 .login {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(400px, 1fr);
+  grid-template-columns: minmax(0, 1.35fr) minmax(400px, 0.9fr);
   min-height: 100vh;
   min-height: 100dvh;
+  background: #0d1117;
+  color: #e9eef5;
 }
 
 /* ---------- Brand side ---------- */
@@ -17,13 +19,11 @@
   flex-direction: column;
   justify-content: space-between;
   gap: 24px;
-  padding: 44px 52px;
-  color: #fff;
-  background:
-    radial-gradient(circle at 70% 78%, rgba(255, 196, 107, 0.9) 0 12%, transparent 30%),
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px) 0 0 / 100% 4px,
-    linear-gradient(180deg, #1a0b3d 0%, #4b1670 35%, #b8336a 62%, #ff7a4d 80%, #2a1150 100%);
+  padding: 40px 52px 0;
   overflow: hidden;
+  background:
+    linear-gradient(205deg, rgba(9, 13, 18, 0.95) 14%, rgba(9, 13, 18, 0.72) 44%, rgba(9, 13, 18, 0.08) 74%),
+    url('../assets/brand/city.webp') 0 60% / cover;
 }
 
 .login__brand-inner {
@@ -31,14 +31,16 @@
   z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 34px;
+  gap: 30px;
+  max-width: 560px;
 }
 
 .login__pitch h1 {
   color: #fff;
-  font-size: clamp(2rem, 3.6vw, 3.1rem);
-  line-height: 1.15;
-  text-shadow: 3px 3px 0 var(--ink);
+  font-size: clamp(2.1rem, 3.6vw, 3.3rem);
+  font-weight: 900;
+  line-height: 1.12;
+  letter-spacing: -0.01em;
 }
 
 .login__pitch h1 span {
@@ -46,10 +48,11 @@
 }
 
 .login__pitch p {
-  max-width: 460px;
+  max-width: 480px;
   margin-top: 16px;
+  color: rgba(255, 255, 255, 0.88);
   font-size: 1.08rem;
-  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.6;
 }
 
 .login__perks {
@@ -71,46 +74,43 @@
 .login__perks span {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  border: 2px solid var(--ink);
-  border-radius: 10px;
-  box-shadow: 2px 2px 0 var(--ink);
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 12px;
+  background: rgba(10, 14, 20, 0.55);
+  color: var(--gold);
+  backdrop-filter: blur(8px);
 }
-
-/* ---------- Yarin and Oren, the bosses (3D) ---------- */
 
 .login__hosts {
   position: relative;
-  align-self: center;
-  width: min(460px, 92%);
-  margin-top: -10px;
+  align-self: flex-end;
+  width: min(380px, 70%);
 }
 
 .login__cast {
   display: block;
-  height: 360px;
-  animation: rise-in 0.8s cubic-bezier(0.3, 1.3, 0.5, 1) 0.3s both;
+  height: 300px;
+  animation: rise-in 0.7s ease 0.2s both;
 }
 
 /* Same order as the 3D scene, which runs left to right. */
 .login__host-names {
   display: flex;
   justify-content: space-around;
-  margin-top: -14px;
+  margin-top: -44px;
+  padding-bottom: 16px;
   direction: ltr;
 }
 
 .login__host-names span {
-  padding: 2px 14px;
-  border: 2px solid #000;
-  background: #ffd84d;
-  color: #000;
-  font-family: var(--font-gta);
-  font-size: 1.6rem;
+  padding: 3px 14px;
+  border-radius: 99px;
+  background: rgba(10, 14, 20, 0.78);
+  color: #fff;
   font-weight: 700;
-  transform: skewX(-8deg);
-  box-shadow: 3px 3px 0 #000;
+  backdrop-filter: blur(8px);
 }
 
 /* ---------- Form side ---------- */
@@ -119,19 +119,12 @@
   display: grid;
   place-items: center;
   padding: 40px 24px;
-  background:
-    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.7), transparent 50%),
-    var(--bg);
+  background: radial-gradient(ellipse at 80% 0%, rgba(240, 184, 74, 0.1), transparent 55%), #0d1117;
 }
 
 .login__card {
   width: 100%;
-  max-width: 420px;
-  border: 3px solid var(--ink);
-  border-radius: 18px;
-  background: var(--paper);
-  box-shadow: 8px 8px 0 var(--ink);
-  overflow: hidden;
+  max-width: 410px;
 }
 
 .login__card.is-shaking {
@@ -143,60 +136,40 @@
   60% {
     transform: translateX(-8px);
   }
+
   40%,
   80% {
     transform: translateX(8px);
   }
 }
 
-.login__card-band {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  padding: 12px;
-  border-bottom: 3px solid var(--ink);
-  background: var(--red);
-  color: #fff;
-  font-family: var(--font-display);
-  font-size: 1.35rem;
-  text-shadow: 2px 2px 0 var(--ink);
-}
-
-.login__card-band .die {
-  width: 32px;
-  padding: 5px;
-  gap: 2px;
-  border-width: 2px;
-  box-shadow: 2px 2px 0 var(--ink);
-}
-
-.login__card-band .die:first-child {
-  transform: rotate(-12deg);
-}
-
-.login__card-band .die:last-child {
-  transform: rotate(10deg);
-}
-
 .login__card-body {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 26px 28px 28px;
 }
 
 .login__card h2 {
-  font-size: 1.9rem;
+  color: #fff;
+  font-size: 2rem;
+  font-weight: 800;
 }
 
 .login__sub {
   margin-top: -10px;
-  color: var(--text-muted);
+}
+
+.login__sub,
+.login__help {
+  color: #98a5b5;
 }
 
 .login__mobile-logo {
   display: none;
+}
+
+.login__card .field__label {
+  color: #dbe3ec;
 }
 
 .login__input {
@@ -207,20 +180,40 @@
 
 .login__input > svg {
   position: absolute;
-  inset-inline-start: 12px;
-  color: var(--text-muted);
+  inset-inline-start: 13px;
+  color: #8593a4;
   pointer-events: none;
 }
 
 /* Physical sides: the email field is LTR inside an RTL page, so logical sides would flip. */
-.login__input .input {
-  height: 48px;
-  padding-right: 40px;
+.login__card .input {
+  height: 52px;
+  padding-right: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.login__card .input::placeholder {
+  color: #76859a;
+}
+
+.login__card .input:focus {
+  border-color: var(--gold);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(240, 184, 74, 0.22);
 }
 
 .login__peek {
   position: absolute;
   inset-inline-end: 5px;
+  color: #98a5b5;
+}
+
+.login__peek:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
 }
 
 .login__input:has(.login__peek) .input {
@@ -228,18 +221,26 @@
 }
 
 .login__submit {
-  margin-top: 4px;
+  margin-top: 6px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffd27c, #eeb145);
+  color: #1b1405;
 }
 
 .login__help {
-  font-size: 0.88rem;
-  color: var(--text-muted);
+  font-size: 0.9rem;
   text-align: center;
 }
 
 @media (max-width: 900px) {
   .login {
     grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+    background:
+      linear-gradient(180deg, rgba(9, 13, 18, 0.35), rgba(9, 13, 18, 0.97) 46%),
+      url('../assets/brand/city.webp') 34% 0 / auto 56vh no-repeat,
+      #0d1117;
   }
 
   .login__brand {
@@ -247,75 +248,15 @@
   }
 
   .login__main {
-    min-height: 100vh;
     min-height: 100dvh;
-    background:
-      repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.03) 0 2px, transparent 2px 16px),
-      linear-gradient(160deg, var(--table-1), var(--table-2));
+    align-items: end;
+    padding: 24px 22px max(32px, env(safe-area-inset-bottom));
+    background: none;
   }
 
   .login__mobile-logo {
     display: flex;
-    justify-content: center;
-    margin-bottom: 4px;
+    margin-bottom: 10px;
+    color: #fff;
   }
-}
-
-/* ---------- Night-city look for the form side ---------- */
-
-.login__main {
-  background:
-    radial-gradient(ellipse at 20% 0%, rgba(255, 79, 163, 0.22), transparent 55%),
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px) 0 0 / 100% 4px,
-    #0c0818;
-}
-
-.login__card {
-  border: 2px solid #000;
-  border-radius: 4px;
-  background: rgba(18, 12, 38, 0.95);
-  color: #e9e4ff;
-  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.6);
-}
-
-.login__card-band {
-  border-bottom: 2px solid #000;
-  background: linear-gradient(90deg, #ff4fa3, #ff9d2e);
-  color: #000;
-  font-family: var(--font-gta);
-  font-size: 1.8rem;
-  text-shadow: none;
-}
-
-.login__card h2 {
-  color: #fff;
-  font-family: var(--font-gta);
-  font-size: 2.6rem;
-}
-
-.login__sub,
-.login__help {
-  color: #a99fd0;
-}
-
-.login__card .field__label {
-  color: #fff;
-}
-
-.login__card .input {
-  border: 2px solid #000;
-  border-radius: 4px;
-  background: #110b24;
-  color: #fff;
-}
-
-.login__card .btn--game {
-  border-radius: 4px;
-  background: linear-gradient(180deg, #ffe066, #ffb22e);
-  font-family: var(--font-gta);
-  font-size: 1.6rem;
-}
-
-.login__pitch h1 span {
-  color: #ffd84d;
 }

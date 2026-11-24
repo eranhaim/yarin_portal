@@ -33,7 +33,7 @@ function codeOf(bot: BotKey): string {
 
 /** The bot as it is now: its version, and the lessons it would teach from. */
 export async function botNow(bot: BotKey): Promise<{ version: string; method: string }> {
-  const method = isCoach(bot) ? await methodFor(COACHES[bot].knowledge) : ''
+  const method = isCoach(bot) ? await methodFor(bot, COACHES[bot].knowledge) : ''
   return { version: hash(`${codeOf(bot)}\n${method}`), method }
 }
 

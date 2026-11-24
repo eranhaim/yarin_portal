@@ -1,19 +1,25 @@
 import { isSkill, type SkillKey } from '../game/rules.ts'
-import { LessonNote } from '../models/Game.ts'
+import { KnowledgeItem, LessonNote, type CoachPersona } from '../models/Game.ts'
 import { Plan } from '../models/Plan.ts'
 
-// Yarin and Oren's method, for the AI: one note per recorded lesson (written from the recording and the
-// slides, edited by the admins). The notes live in the database only; they are the program's content.
+// Yarin and Oren's method, for the AI: one note per recorded lesson (written from the recording and the slides),
+// and the material they add to the brain. Admins can edit both. The notes live in the database only; they are the
+// program's content.
 
 type Note = { taskId: string; title: string; skill: SkillKey; method: string }
 
-const MAX_METHOD = 60_000
+/** About 70 thousand tokens: the whole program fits. */
+const MAX_METHOD = 160_000
 const FRESH_MS = 60_000
 let cache: { at: number; notes: Note[] } | null = null
+
+type Item = { title: string; personas: string[]; method: string }
+let items: { at: number; list: Item[] } | null = null
 
 /** Call after a lesson note or a plan changes. */
 export function forgetKnowledge(): void {
   cache = null
+  items = null
 }
 
 async function allNotes(): Promise<Note[]> {
@@ -34,12 +40,25 @@ async function allNotes(): Promise<Note[]> {
   return notes
 }
 
-/** The lessons that a coach teaches from. */
-export async function methodFor(skills: readonly SkillKey[]): Promise<string> {
+async function brainItems(): Promise<Item[]> {
+  if (items && Date.now() - items.at < FRESH_MS) return items.list
+  const docs = await KnowledgeItem.find({ enabled: true, status: 'ready', method: { $ne: '' } }, { title: 1, personas: 1, method: 1 }).sort({ createdAt: 1 })
+  items = { at: Date.now(), list: docs.map((d) => ({ title: d.title, personas: [...d.personas] as string[], method: d.method })) }
+  return items.list
+}
+
+/** Everything a coach teaches from: what Yarin and Oren added to the brain, and the lessons. */
+export async function methodFor(persona: CoachPersona, skills: readonly SkillKey[]): Promise<string> {
   let text = ''
+  for (const item of await brainItems()) {
+    if (item.personas.length > 0 && !item.personas.includes(persona)) continue
+    const part = `## ${item.title} (from Yarin and Oren)\n${item.method.trim()}\n\n`
+    if (text.length + part.length > MAX_METHOD) break
+    text += part
+  }
   for (const note of await allNotes()) {
     if (!skills.includes(note.skill)) continue
-    const part = `## ${note.title}\n${note.method.trim()}\n\n`
+    const part = `## Lesson: ${note.title}\n${note.method.trim()}\n\n`
     if (text.length + part.length > MAX_METHOD) break
     text += part
   }
@@ -50,4 +69,16 @@ export async function methodFor(skills: readonly SkillKey[]): Promise<string> {
 export async function methodOfTask(taskId: string): Promise<string> {
   const note = await LessonNote.findOne({ taskId })
   return note?.method ?? ''
+}
+
+/** How much the brain holds now (for the admin page). */
+export async function brainSize(): Promise<{ lessons: number; lessonWords: number; items: number; itemWords: number }> {
+  const words = (text: string) => text.split(/\s+/).filter(Boolean).length
+  const [notes, list] = await Promise.all([allNotes(), brainItems()])
+  return {
+    lessons: notes.length,
+    lessonWords: notes.reduce((n, x) => n + words(x.method), 0),
+    items: list.length,
+    itemWords: list.reduce((n, x) => n + words(x.method), 0),
+  }
 }

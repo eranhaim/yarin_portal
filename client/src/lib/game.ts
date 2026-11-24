@@ -3,13 +3,13 @@ import type { CoachPersona, LeadStatus, Look, SkillKey, StepKey } from './types'
 
 export const COACH_TITLES: Record<CoachPersona, string> = {
   sales: 'סימולטור מכירות',
-  scripts: 'מאמן תסריטים',
+  scripts: 'המשווק',
   mental: 'מאמן מנטלי',
 }
 
 export const COACH_META: Record<CoachPersona, { icon: IconName; color: string; tagline: string }> = {
-  sales: { icon: 'phone', color: '#e6b04a', tagline: 'מתאמנים על שיחות אמיתיות, עם לקוח שמתנגד כמו בחיים.' },
-  scripts: { icon: 'edit', color: '#9aa7f0', tagline: 'מרעיון לתסריט מוכן לצילום, ובדיקה של סרטונים אמיתיים.' },
+  sales: { icon: 'phone', color: '#e6b04a', tagline: 'מתאמנים בכתב או בקול מול לקוח שמתנגד כמו בחיים, ומקבלים ניתוח של שיחות מוקלטות.' },
+  scripts: { icon: 'megaphone', color: '#9aa7f0', tagline: 'הוקים, מסרים, תסריטים ותוכנית תוכן. מכיר את כל התהליך, מא׳ ועד ת׳.' },
   mental: { icon: 'gauge', color: '#6fc3b2', tagline: 'ביטחון, התמדה ופחד ממכירה. כל שיחה נגמרת בצעד קטן.' },
 }
 
