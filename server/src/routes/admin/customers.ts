@@ -10,7 +10,7 @@ import { deleteGameData } from '../../models/Game.ts'
 import { Plan, planTaskIds, toPlanProgressView, type PlanDoc } from '../../models/Plan.ts'
 import { deleteSubmissions, Submission } from '../../models/Submission.ts'
 import { detectImageType, IMAGE_TYPES } from '../../images.ts'
-import { deleteObject, putObject, storageEnabled } from '../../storage.ts'
+import { deleteObject, deleteObjects, putObject, storageEnabled } from '../../storage.ts'
 
 export const customersRouter = Router()
 
@@ -100,7 +100,8 @@ customersRouter.delete('/:id', async (req, res) => {
   if (avatarKey) await deleteObject(avatarKey).catch((err) => console.warn('Could not delete avatar', err))
   // The customer's homework and game data go with them.
   await deleteSubmissions(await Submission.find({ customerId: customer._id }))
-  await deleteGameData(customer._id)
+  const keys = await deleteGameData(customer._id)
+  if (keys.length) await deleteObjects(keys).catch((err) => console.warn('Could not delete coach files', err))
   res.json({ ok: true })
 })
 

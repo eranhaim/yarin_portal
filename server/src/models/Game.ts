@@ -459,8 +459,11 @@ export const AiUsage = model('AiUsage', aiUsageSchema)
  * Removes a deleted customer's game data. The friends they invited (leads) stay:
  * they are possible customers for the business.
  */
-export async function deleteGameData(customerId: Types.ObjectId): Promise<void> {
+export async function deleteGameData(customerId: Types.ObjectId): Promise<string[]> {
   const filter = { customerId }
+  // Files that the customer gave to a coach (call recordings, screenshots) live in the storage.
+  const sessions = await CoachSession.find(filter).select('messages')
+  const keys = sessions.flatMap((s) => s.messages.flatMap((m) => m.attachments.flatMap((a) => (a.key?.startsWith('coach/') ? [a.key] : []))))
   await Promise.all([
     XpEvent.deleteMany(filter),
     WatchProgress.deleteMany(filter),
@@ -474,6 +477,7 @@ export async function deleteGameData(customerId: Types.ObjectId): Promise<void> 
     RewardDelivery.deleteMany(filter),
     AiUsage.deleteMany(filter),
   ])
+  return keys
 }
 
 // ---------- Site settings (key/value) ----------
