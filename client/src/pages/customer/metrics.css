@@ -471,7 +471,8 @@ a.road__task:hover {
 .columns__goal span {
   position: absolute;
   bottom: 3px;
-  inset-inline-end: 0;
+  /* At the oldest month: the newest one carries its own number near the line. */
+  inset-inline-start: 0;
   color: var(--text-muted);
   font-size: 0.78rem;
 }
