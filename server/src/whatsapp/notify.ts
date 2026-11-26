@@ -127,40 +127,55 @@ const ERRORS: Record<WhatsAppError['kind'], string> = {
   other: 'שגיאה זמנית בשליחה',
 }
 
-let flushing = false
-/** Sends what is due, oldest first. A temporary error tries again later (up to 4 times). */
-export async function flush(): Promise<void> {
-  if (flushing || !whatsappConfigured) return
-  flushing = true
-  try {
-    const s = await whatsappSettings()
-    for (let round = 0; round < 5; round++) {
-      const due = await WhatsAppMessage.find({ status: 'queued', sendAfter: { $lte: new Date() } }).sort({ createdAt: 1 }).limit(20)
-      if (due.length === 0) break
-      for (const message of due) {
-        if (!message.urgent && s.quiet && quietAt(new Date())) {
-          message.sendAfter = nextAllowed(new Date(), true)
-          await message.save()
-          continue
-        }
-        try {
-          message.providerId = await sendText(message.chatId, message.text)
-          message.status = 'sent'
-          message.sentAt = new Date()
-          message.error = ''
-        } catch (err) {
-          const kind = err instanceof WhatsAppError ? err.kind : 'other'
-          message.tries += 1
-          message.error = ERRORS[kind]
-          if (kind === 'quota' || kind === 'auth' || message.tries >= 4) message.status = 'failed'
-          else message.sendAfter = new Date(Date.now() + message.tries * 10 * 60_000)
-          console.warn(`WhatsApp message ${message.kind} not sent: ${err instanceof Error ? err.message : err}`)
-        }
+let running: Promise<void> | null = null
+let again = false
+/**
+ * Sends what is due, oldest first. A temporary error tries again later (up to 4 times). A call during a run asks
+ * for one more pass, and its promise ends after that pass (so a caller's new message is included).
+ */
+export function flush(): Promise<void> {
+  if (!whatsappConfigured) return Promise.resolve()
+  if (running) {
+    again = true
+    return running
+  }
+  running = (async () => {
+    do {
+      again = false
+      await sendDue()
+    } while (again)
+  })().finally(() => {
+    running = null
+  })
+  return running
+}
+
+async function sendDue(): Promise<void> {
+  const s = await whatsappSettings()
+  for (let round = 0; round < 5; round++) {
+    const due = await WhatsAppMessage.find({ status: 'queued', sendAfter: { $lte: new Date() } }).sort({ createdAt: 1 }).limit(20)
+    if (due.length === 0) break
+    for (const message of due) {
+      if (!message.urgent && s.quiet && quietAt(new Date())) {
+        message.sendAfter = nextAllowed(new Date(), true)
         await message.save()
+        continue
       }
+      try {
+        message.providerId = await sendText(message.chatId, message.text)
+        message.status = 'sent'
+        message.sentAt = new Date()
+        message.error = ''
+      } catch (err) {
+        const kind = err instanceof WhatsAppError ? err.kind : 'other'
+        message.tries += 1
+        message.error = ERRORS[kind]
+        if (kind === 'quota' || kind === 'auth' || message.tries >= 4) message.status = 'failed'
+        else message.sendAfter = new Date(Date.now() + message.tries * 10 * 60_000)
+        console.warn(`WhatsApp message ${message.kind} not sent: ${err instanceof Error ? err.message : err}`)
+      }
+      await message.save()
     }
-  } finally {
-    flushing = false
   }
 }
 
