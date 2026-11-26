@@ -36,6 +36,12 @@ services:
       SPEECH_API_URL: ${SPEECH_API_URL:-}
       SPEECH_API_KEY: ${SPEECH_API_KEY:-}
       SPEECH_API_MODEL: ${SPEECH_API_MODEL:-}
+      # WhatsApp messages through Green API (green-api.com). Without both, no messages are sent.
+      GREEN_API_ID: ${GREEN_API_ID:-}
+      GREEN_API_TOKEN: ${GREEN_API_TOKEN:-}
+      GREEN_API_URL: ${GREEN_API_URL:-}
+      # The site's address, for the links in the messages.
+      APP_URL: ${APP_URL:-}
     # Speech recognition and video are heavy and the server is shared: the API gets a limit.
     mem_limit: 3g
     cpus: 1.5
