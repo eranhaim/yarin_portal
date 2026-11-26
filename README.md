@@ -88,6 +88,7 @@ server/                 Express API
   src/ai/               Claude, coaches, the brain, files, speech, the lab
   src/routes/           auth, public, me/* (customer), admin/*
   scripts/bucket-cors.ts  Allows browser uploads to the bucket from a site origin
+tools/models/           Scripts that make the 3D people and car light (see its README)
 compose.yaml            Production stack (API + Caddy)
 compose.dev.yaml        MongoDB for local development
 .env.example            All settings, with comments
