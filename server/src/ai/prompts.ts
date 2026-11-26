@@ -1,3 +1,4 @@
+import { PEOPLE_FOR_AI } from '../game/people.ts'
 import { z } from 'zod'
 import { SKILLS } from '../game/rules.ts'
 
@@ -145,4 +146,7 @@ ${HEBREW}`
 
 // ---------- Character from a photo ----------
 
-export const LOOK_SYSTEM = `You design a cartoon game character that looks like the person in the photo. Pick the closest option for each feature: skin tone, hair style and color, beard, mustache, glasses (use "sun" only for sunglasses), and the clothing style and main color you see. Choose an accessory that fits their vibe. Use chain = true only if a gold chain or a flashy "boss" style is visible. If you cannot see a feature, choose the most neutral option.`
+export const LOOK_SYSTEM = `You set up a realistic game character for the person in the photo. First pick "person": the ready-made person from the list below who looks most like them (gender first, then skin tone, then hair, then beard and age). Set skin, hair, hairColor and beard to what you see. Then dress them: outfit "suit" for a suit, "blazer" for a buttoned shirt or a blazer, "tee" for a T-shirt, "hoodie" for any other casual clothes; outfitColor = the main color of their top. Glasses: use "sun" only for sunglasses. Choose an accessory that fits their vibe. Use chain = true only if a gold chain or a flashy "boss" style is visible. If you cannot see a feature, choose the most neutral option.
+
+The people:
+${PEOPLE_FOR_AI}`

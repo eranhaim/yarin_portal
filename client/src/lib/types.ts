@@ -1,5 +1,7 @@
 // Shapes of the data the API returns.
 
+import type { PersonId } from '../components/person/people'
+
 export type TaskStatus = 'not_started' | 'started' | 'completed'
 export type ChapterState = 'completed' | 'current' | 'locked'
 
@@ -425,6 +427,8 @@ export type CoachAttachment = { id: string; name: string; contentType: string; s
 export type CoachWork = { kind: 'worksheet' | 'file'; id: string; title: string; at: string }
 
 export type Look = {
+  /** The realistic person they play (see components/person/people.ts). Older looks have none: the closest one is used. */
+  person?: PersonId
   skin: 'porcelain' | 'light' | 'tan' | 'olive' | 'brown' | 'dark'
   hair: 'short' | 'quiff' | 'slick' | 'buzz' | 'curly' | 'long' | 'bun' | 'bald'
   hairColor: 'black' | 'darkBrown' | 'brown' | 'blond' | 'red' | 'gray' | 'white'

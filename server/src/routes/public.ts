@@ -13,11 +13,11 @@ export const publicRouter = Router()
 export const HOST_DEFAULTS: Record<'yarin' | 'oren', { name: string; look: Look }> = {
   yarin: {
     name: 'ירין',
-    look: { skin: 'tan', hair: 'slick', hairColor: 'black', beard: 'short', mustache: true, glasses: 'sun', outfit: 'suit', outfitColor: 'black', accessory: 'phone', chain: true },
+    look: { person: 'arjun', skin: 'olive', hair: 'short', hairColor: 'black', beard: 'none', mustache: false, glasses: 'sun', outfit: 'suit', outfitColor: 'black', accessory: 'phone', chain: true },
   },
   oren: {
     name: 'אורן',
-    look: { skin: 'light', hair: 'quiff', hairColor: 'darkBrown', beard: 'full', mustache: true, glasses: 'square', outfit: 'suit', outfitColor: 'navy', accessory: 'briefcase', chain: false },
+    look: { person: 'james', skin: 'light', hair: 'quiff', hairColor: 'darkBrown', beard: 'none', mustache: false, glasses: 'square', outfit: 'suit', outfitColor: 'navy', accessory: 'briefcase', chain: false },
   },
 }
 

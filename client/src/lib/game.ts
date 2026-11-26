@@ -149,13 +149,13 @@ export const LOOK_OPTIONS = {
     { value: 'none', label: 'בלי' },
     { value: 'round', label: 'עגולים' },
     { value: 'square', label: 'מרובעים' },
-    { value: 'sun', label: 'שמש' },
+    { value: 'sun', label: 'משקפי שמש' },
   ],
   outfit: [
     { value: 'suit', label: 'חליפה' },
-    { value: 'blazer', label: 'בלייזר' },
-    { value: 'hoodie', label: 'קפוצ׳ון' },
+    { value: 'blazer', label: 'חולצה מכופתרת' },
     { value: 'tee', label: 'טי-שירט' },
+    { value: 'hoodie', label: 'הבגדים שלי' },
   ],
   outfitColor: [
     { value: 'black', label: 'שחור' },
@@ -174,9 +174,10 @@ export const LOOK_OPTIONS = {
     { value: 'phone', label: 'טלפון' },
     { value: 'coffee', label: 'קפה' },
   ],
-} satisfies { [K in Exclude<keyof Look, 'mustache' | 'chain'>]: Option<Look[K]>[] }
+} satisfies { [K in Exclude<keyof Look, 'mustache' | 'chain' | 'person'>]: Option<Exclude<Look[K], undefined>>[] }
 
 export const DEFAULT_LOOK: Look = {
+  person: 'james',
   skin: 'light',
   hair: 'quiff',
   hairColor: 'darkBrown',

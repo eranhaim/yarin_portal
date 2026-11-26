@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { aiJson, sendAiError, useAiQuota } from '../../ai/claude.ts'
 import { LOOK_SYSTEM } from '../../ai/prompts.ts'
 import { defaultLook, lookSchema, type Look } from '../../game/content.ts'
+import { PERSON_IDS } from '../../game/people.ts'
 import { parseBody } from '../../http.ts'
 import { detectImageType, IMAGE_TYPES, type ImageType } from '../../images.ts'
 import { toCustomerView } from '../../models/Customer.ts'
@@ -16,7 +17,8 @@ export const profileRouter = Router()
 /** Asks Claude to pick character features that match the person in the photo. */
 export async function lookFromPhoto(image: Buffer, type: ImageType): Promise<Look> {
   return aiJson({
-    schema: lookSchema,
+    // From a photo the person is always chosen.
+    schema: lookSchema.extend({ person: z.enum(PERSON_IDS) }),
     system: LOOK_SYSTEM,
     messages: [
       {

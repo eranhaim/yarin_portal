@@ -81,9 +81,11 @@ const CURB = 0.16
 /** Half of the opening that a side street needs in the sidewalks. */
 export const CROSS_HALF = 6.5
 
-function streetGeometry(layout: CityLayout) {
-  const from = -75
-  const to = layout.length + 200
+/** How far a side street goes on each side of the avenue (the fog covers the rest). */
+const SIDE_STREET = 80
+
+function streetGeometry(layout: CityLayout, [from, to]: [number, number]) {
+  const crossings = layout.crossings.filter((c) => c > from + CROSS_HALF && c < to - CROSS_HALF)
   const parts = {
     road: [ribbon(layout, from, to, -ROAD.half, ROAD.half, 0, [5, 5])] as THREE.BufferGeometry[],
     sidewalk: [] as THREE.BufferGeometry[],
@@ -93,7 +95,7 @@ function streetGeometry(layout: CityLayout) {
     grass: [] as THREE.BufferGeometry[],
   }
   // Pieces of the street between the side streets.
-  const stops = [from, ...layout.crossings, to]
+  const stops = [from, ...crossings, to]
   for (let i = 0; i < stops.length - 1; i++) {
     const a = i === 0 ? from : stops[i]! + CROSS_HALF
     const b = i === stops.length - 2 ? to : stops[i + 1]! - CROSS_HALF
@@ -118,11 +120,11 @@ function streetGeometry(layout: CityLayout) {
     }
     for (const side of [-1, 1]) parts.paint.push(ribbon(layout, a, b, side * 8.2 - 0.05, side * 8.2 + 0.05, 0.012, [1, 1]))
   }
-  for (const c of layout.crossings) {
+  for (const c of crossings) {
     // The side street, on both sides of the avenue.
     for (const side of [-1, 1]) {
-      parts.road.push(pad(layout, c, side * (ROAD.half + 90), 180, CROSS_HALF * 2 - 2, 0.002, 5))
-      for (let k = 0; k < 14; k++) parts.paint.push(pad(layout, c, side * (ROAD.half + 14 + k * 9), 3.2, 0.14, 0.014))
+      parts.road.push(pad(layout, c, side * (ROAD.half + SIDE_STREET / 2), SIDE_STREET, CROSS_HALF * 2 - 2, 0.002, 5))
+      for (let k = 0; k < Math.floor((SIDE_STREET - 14) / 9); k++) parts.paint.push(pad(layout, c, side * (ROAD.half + 14 + k * 9), 3.2, 0.14, 0.014))
     }
     // Zebra crossings before and after it, and stop lines.
     for (const e of [-1, 1]) {
@@ -141,9 +143,9 @@ function streetGeometry(layout: CityLayout) {
   }
 }
 
-export function Street({ layout }: { layout: CityLayout }) {
+export function Street({ layout, range }: { layout: CityLayout; range: [number, number] }) {
   const m = cityMaterials()
-  const g = useMemo(() => streetGeometry(layout), [layout])
+  const g = useMemo(() => streetGeometry(layout, range), [layout, range])
   const middle = layout.length / 2
   return (
     <group>
@@ -196,11 +198,13 @@ function signsGeometry(signs: { position: THREE.Vector3; angle: number; cell: nu
 
 let trimMaterial: THREE.MeshStandardMaterial | null = null
 
-export function Buildings({ layout }: { layout: CityLayout }) {
+export function Buildings({ layout, range }: { layout: CityLayout; range: [number, number] }) {
   const m = cityMaterials()
   const chunks = useMemo(() => {
     const groups = new Map<number, Building[]>()
+    // The plan is the same on every visit (seeded); only the part along the drive is built.
     for (const b of planBuildings(layout)) {
+      if (b.at < range[0] - 20 || b.at > range[1] + 20) continue
       const key = Math.floor(b.at / CHUNK)
       groups.set(key, [...(groups.get(key) ?? []), b])
     }
@@ -208,7 +212,7 @@ export function Buildings({ layout }: { layout: CityLayout }) {
       const meshes = buildChunk(list, key * 31 + 7)
       return { key, meshes, signs: signsGeometry(meshes.signs) }
     })
-  }, [layout])
+  }, [layout, range])
   trimMaterial ??= new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85 })
   return (
     <>

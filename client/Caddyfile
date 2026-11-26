@@ -28,7 +28,10 @@
 	# Built files have a content hash in their name, so they can be cached for a long time.
 	@assets path /assets/*
 	header @assets Cache-Control "public, max-age=31536000, immutable"
-	@pages not path /assets/* /api/*
+	# The 3D people and cars are loaded with a version in the address (?v=...), so they can be kept for a month.
+	@models path /people/* /car/*
+	header @models Cache-Control "public, max-age=2592000"
+	@pages not path /assets/* /api/* /people/* /car/*
 	header @pages Cache-Control "no-cache"
 
 	header {
@@ -36,8 +39,9 @@
 		X-Frame-Options DENY
 		Referrer-Policy strict-origin-when-cross-origin
 		Permissions-Policy "camera=(), microphone=(), geolocation=()"
-		# Avatars, posters, videos and uploads come from the Vultr Object Storage bucket.
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https://*.vultrobjects.com; media-src 'self' blob: https://*.vultrobjects.com; connect-src 'self' https://*.vultrobjects.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		# Avatars, posters, videos and uploads come from the Vultr Object Storage bucket. WebAssembly (and only that)
+		# may run: it unpacks the compressed 3D models.
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https://*.vultrobjects.com; media-src 'self' blob: https://*.vultrobjects.com; connect-src 'self' https://*.vultrobjects.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 		-Server
 	}
 }

@@ -1,97 +1,174 @@
-import { useFrame } from '@react-three/fiber'
-import { useMemo, useRef, type RefObject } from 'react'
+import { useFrame, useLoader } from '@react-three/fiber'
+import { useEffect, useMemo, useRef, type RefObject } from 'react'
 import * as THREE from 'three'
-import { carModel } from './carModel'
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
+import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { MODELS_VERSION } from '../person/people'
 
-// The player's car. The scene moves it along the avenue; the wheels and the body react to the speed.
+// The player's car: a detailed concept car (public/car/car.glb, see public/car/LICENSE.md). The scene moves it along
+// the avenue; the wheels turn and steer, the body leans, and the brake lights glow when it stops.
 
 export type CarState = { distance: number; offset: number; speed: number; steer: number; braking: boolean }
 
+export const CAR_URL = `/car/car.glb?v=${MODELS_VERSION}`
+export const TRAFFIC_CAR_URL = `/car/car-lod.glb?v=${MODELS_VERSION}`
+
+export const withMeshopt = (loader: THREE.Loader) => {
+  ;(loader as GLTFLoader).setMeshoptDecoder(MeshoptDecoder)
+}
+
 function plateTexture() {
   const canvas = document.createElement('canvas')
-  canvas.width = 256
-  canvas.height = 56
+  canvas.width = 512
+  canvas.height = 128
   const ctx = canvas.getContext('2d')!
   ctx.fillStyle = '#f2c230'
-  ctx.fillRect(0, 0, 256, 56)
+  ctx.fillRect(0, 0, 512, 128)
   ctx.fillStyle = '#2a4fa0'
-  ctx.fillRect(0, 0, 26, 56)
+  ctx.fillRect(0, 0, 54, 128)
+  ctx.strokeStyle = '#16130a'
+  ctx.lineWidth = 6
+  ctx.strokeRect(3, 3, 506, 122)
   ctx.fillStyle = '#16130a'
-  ctx.font = '700 40px Arial'
+  ctx.font = '700 84px Arial'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillText('10 · 000 · 10', 142, 31)
+  ctx.fillText('10·000·10', 284, 70)
   const t = new THREE.CanvasTexture(canvas)
   t.colorSpace = THREE.SRGBColorSpace
+  t.flipY = false
+  t.anisotropy = 4
   return t
 }
 
-type Props = { state: RefObject<CarState>; root: RefObject<THREE.Group | null>; color?: string }
+type Wheel = { steer: THREE.Object3D; spin: THREE.Object3D; front: boolean }
+type CarRig = { car: THREE.Group; body: THREE.Group; wheels: Wheel[]; radius: number; brake: THREE.MeshStandardMaterial[]; dispose: () => void }
 
-export function PlayerCar({ state, root, color = '#122231' }: Props) {
-  const model = carModel()
-  const body = useRef<THREE.Group>(null)
-  const wheels = useRef<(THREE.Group | null)[]>([])
+/**
+ * Turns the model so that it drives toward -Z with its wheels on y = 0, the origin halfway between the axles,
+ * and puts every wheel on its own pivots (steering, then spinning).
+ */
+function buildCar(gltf: GLTF): CarRig {
+  // A copy: the wheels move to their own pivots, and the cached model must stay whole.
+  const model = gltf.scene.clone(true)
+  const at = (name: string) => {
+    const node = model.getObjectByName(name)
+    return node ? new THREE.Box3().setFromObject(node).getCenter(new THREE.Vector3()) : null
+  }
+  model.updateMatrixWorld(true)
+  const names = ['WheelFrontL', 'WheelFrontR', 'WheelRearL', 'WheelRearR']
+  const [fl, fr, rl, rr] = names.map(at)
+  const front = fl && fr ? fl.clone().add(fr).multiplyScalar(0.5) : new THREE.Vector3(0, 0, -1)
+  const rear = rl && rr ? rl.clone().add(rr).multiplyScalar(0.5) : new THREE.Vector3(0, 0, 1)
+  const forward = front.clone().sub(rear).setY(0).normalize()
+
+  const car = new THREE.Group()
+  const body = new THREE.Group()
+  const oriented = new THREE.Group()
+  car.add(body)
+  body.add(oriented)
+  oriented.add(model)
+  oriented.rotation.y = Math.atan2(forward.x, forward.z) + Math.PI
+  oriented.updateMatrixWorld(true)
+  const box = new THREE.Box3().setFromObject(model)
+  const middle = front.clone().add(rear).multiplyScalar(0.5).applyMatrix4(oriented.matrixWorld)
+  oriented.position.set(-middle.x, -box.min.y, -middle.z)
+  car.updateMatrixWorld(true)
+
+  // Wheels: steering pivot (around Y), then the spin (around the axle, X).
+  const wheels: Wheel[] = []
+  let radius = 0.36
+  for (const name of names) {
+    const node = model.getObjectByName(name)
+    if (!node) continue
+    const wheelBox = new THREE.Box3().setFromObject(node)
+    const center = wheelBox.getCenter(new THREE.Vector3())
+    radius = (wheelBox.max.y - wheelBox.min.y) / 2
+    const steer = new THREE.Group()
+    steer.position.copy(center)
+    const spin = new THREE.Group()
+    steer.add(spin)
+    car.add(steer)
+    car.updateMatrixWorld(true)
+    spin.attach(node)
+    wheels.push({ steer, spin, front: name.startsWith('WheelFront') })
+  }
+
+  const brake: THREE.MeshStandardMaterial[] = []
+  const owned: THREE.Material[] = []
+  const plate = plateTexture()
+  car.traverse((o) => {
+    const mesh = o as THREE.Mesh
+    if (!mesh.isMesh) return
+    const material = mesh.material as THREE.MeshStandardMaterial
+    // Only the outside casts a shadow; the glass, the inside and the small parts do not.
+    const solid = !material.transparent
+    mesh.castShadow = solid && !/^(Interior|Hardware|Dashboard|Mirror|License|Signallight|Brakelight|Headlight|Rim2|Disc)/.test(material.name)
+    mesh.receiveShadow = solid
+    if (material.name === 'Brakelight') {
+      material.emissive.set('#ff1a14')
+      material.emissiveIntensity = 1.6
+      brake.push(material)
+    } else if (material.name === 'Headlight') {
+      material.emissive.set('#eef5ff')
+      material.emissiveIntensity = 1.8
+    } else if (material.name === 'License') {
+      const old = material.map
+      if (old) {
+        plate.offset.copy(old.offset)
+        plate.repeat.copy(old.repeat)
+        plate.rotation = old.rotation
+        plate.center.copy(old.center)
+      }
+      material.map = plate
+      material.color.set('#ffffff')
+      material.needsUpdate = true
+      owned.push(material)
+    } else if (/^Paint/.test(material.name)) {
+      material.envMapIntensity = 1.2
+    }
+  })
+  return {
+    car,
+    body,
+    wheels,
+    radius,
+    brake,
+    dispose: () => {
+      plate.dispose()
+      for (const m of owned) m.dispose()
+    },
+  }
+}
+
+type Props = { state: RefObject<CarState>; root: RefObject<THREE.Group | null> }
+
+export function PlayerCar({ state, root }: Props) {
+  const gltf = useLoader(GLTFLoader, CAR_URL, withMeshopt)
+  const rig = useMemo(() => buildCar(gltf), [gltf])
   const spin = useRef(0)
-  const materials = useMemo(
-    () => ({
-      paint: new THREE.MeshPhysicalMaterial({ color, metalness: 0.35, roughness: 0.34, clearcoat: 1, clearcoatRoughness: 0.05, envMapIntensity: 1.15 }),
-      glass: new THREE.MeshPhysicalMaterial({ color: '#07090c', metalness: 0.2, roughness: 0.06, envMapIntensity: 1 }),
-      dark: new THREE.MeshStandardMaterial({ color: '#0b0c0e', roughness: 0.62 }),
-      arch: new THREE.MeshStandardMaterial({ color: '#050506', roughness: 1 }),
-      tire: new THREE.MeshStandardMaterial({ color: '#131416', roughness: 0.9 }),
-      disc: new THREE.MeshStandardMaterial({ color: '#2a2d31', roughness: 0.5, metalness: 0.6 }),
-      rim: new THREE.MeshStandardMaterial({ color: '#b9bec5', roughness: 0.25, metalness: 0.95 }),
-      tail: new THREE.MeshStandardMaterial({ color: '#50060a', emissive: '#ff1d1d', emissiveIntensity: 2.2 }),
-      head: new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: '#eaf3ff', emissiveIntensity: 2 }),
-      plate: new THREE.MeshStandardMaterial({ map: plateTexture(), roughness: 0.5 }),
-    }),
-    [color],
-  )
+  useEffect(() => rig.dispose, [rig])
 
   useFrame((_, delta) => {
     const s = state.current
-    if (!s || !body.current) return
-    spin.current -= (s.speed * delta) / 0.35
-    wheels.current.forEach((w, i) => {
-      if (!w) return
-      w.rotation.x = spin.current
+    if (!s) return
+    spin.current -= (s.speed * delta) / rig.radius
+    for (const w of rig.wheels) {
+      w.spin.rotation.x = spin.current
       // The front wheels steer.
-      if (i < 2 && w.parent) w.parent.rotation.y = s.steer * 0.45
-    })
+      if (w.front) w.steer.rotation.y = s.steer * 0.42
+    }
     // The body leans a little into curves and dips when braking.
-    const pitch = s.braking ? 0.016 : -Math.min(0.014, Math.max(0, s.speed) * 0.0006)
-    body.current.rotation.x += (pitch - body.current.rotation.x) * Math.min(1, delta * 4)
-    body.current.rotation.z += (s.steer * 0.05 - body.current.rotation.z) * Math.min(1, delta * 4)
-    const tail = materials.tail
-    tail.emissiveIntensity += ((s.braking ? 4.2 : 1.9) - tail.emissiveIntensity) * Math.min(1, delta * 8)
+    const body = rig.body
+    const pitch = s.braking ? 0.012 : -Math.min(0.01, Math.max(0, s.speed) * 0.0005)
+    body.rotation.x += (pitch - body.rotation.x) * Math.min(1, delta * 4)
+    body.rotation.z += (s.steer * 0.035 - body.rotation.z) * Math.min(1, delta * 4)
+    for (const m of rig.brake) m.emissiveIntensity += ((s.braking ? 5 : 1.6) - m.emissiveIntensity) * Math.min(1, delta * 8)
   })
 
   return (
     <group ref={root}>
-      <group ref={body}>
-        <mesh geometry={model.body} material={materials.paint} castShadow receiveShadow />
-        <mesh geometry={model.cabin} material={materials.glass} castShadow />
-        <mesh geometry={model.roof} material={materials.paint} />
-        <mesh geometry={model.dark} material={materials.dark} />
-        <mesh geometry={model.tail} material={materials.tail} />
-        <mesh geometry={model.head} material={materials.head} />
-        <mesh geometry={model.plate} material={materials.plate} />
-        <mesh geometry={model.arches} material={materials.arch} />
-      </group>
-      {model.wheels.map(([x, z], i) => (
-        <group key={i} position={[x * 1.06, 0.35, z]}>
-          <group
-            ref={(g) => {
-              wheels.current[i] = g
-            }}
-          >
-            <mesh geometry={model.tire} material={materials.tire} castShadow />
-            <mesh geometry={model.disc} material={materials.disc} />
-            <mesh geometry={model.rim} material={materials.rim} />
-          </group>
-        </group>
-      ))}
+      <primitive object={rig.car} />
     </group>
   )
 }

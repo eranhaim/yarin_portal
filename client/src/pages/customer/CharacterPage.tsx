@@ -9,8 +9,8 @@ import { squareImage } from '../../lib/media'
 import type { CustomerSelf, Look } from '../../lib/types'
 import { useCustomer } from './customerContext'
 
-// The character creator: every customer designs a character that looks like them,
-// by hand or from their profile photo (Claude reads the photo and picks the features).
+// The character creator: every customer picks a realistic person who looks like them and dresses them,
+// by hand or from their profile photo (Claude reads the photo and picks the closest person and the features).
 
 export function CharacterPage() {
   const { me, look: saved, setLook, setMe } = useCustomer()
@@ -22,8 +22,8 @@ export function CharacterPage() {
   const fileInput = useRef<HTMLInputElement>(null)
   const dirty = JSON.stringify(look) !== JSON.stringify(saved)
 
-  const set = <K extends keyof Look>(key: K, value: Look[K]) => {
-    setDraft((l) => ({ ...l, [key]: value }))
+  const set = (patch: Partial<Look>) => {
+    setDraft((l) => ({ ...l, ...patch }))
     setHop((n) => n + 1)
   }
 
@@ -78,7 +78,7 @@ export function CharacterPage() {
       <header className="page-head">
         <span className="gta-eyebrow">הדמות שלכם בעיר</span>
         <h1 className="gta-title">עיצוב הדמות</h1>
-        <p>העלו תמונה והבוט ייצור דמות שדומה לכם, או עצבו בעצמכם.</p>
+        <p>בחרו את הדמות שהכי דומה לכם והלבישו אותה, או העלו תמונה והבוט יבחר בשבילכם.</p>
       </header>
 
       <div className="character-studio">

@@ -78,3 +78,56 @@
     transform: none;
   }
 }
+
+/* The people: a grid of faces. */
+.look-people {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
+  gap: 8px;
+}
+
+.look-person {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 2px solid var(--look-line);
+  border-radius: 14px;
+  background: #2b2d33;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.look-person img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* The pictures show the upper body; the face is what tells people apart. */
+  transform: scale(1.75);
+  transform-origin: 50% 16%;
+}
+
+.look-person:hover {
+  transform: translateY(-2px);
+}
+
+.look-person[aria-pressed='true'] {
+  border-color: var(--look-on-bg);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--look-on-bg) 45%, transparent);
+}
+
+.look-person:focus-visible {
+  outline: 3px solid var(--look-on-bg);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .look-person {
+    transition: none;
+  }
+
+  .look-person:hover {
+    transform: none;
+  }
+}

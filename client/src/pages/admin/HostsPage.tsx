@@ -145,7 +145,7 @@ function HostCard({ host, hop, busy, disabled, onLook, onPhoto }: CardProps) {
         }}
       />
       <div className="adm-host__editor">
-        <LookEditor look={host.look} onChange={(key, value) => onLook({ ...host.look, [key]: value })} />
+        <LookEditor look={host.look} onChange={(patch) => onLook({ ...host.look, ...patch })} />
       </div>
     </section>
   )

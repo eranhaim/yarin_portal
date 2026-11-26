@@ -1,10 +1,11 @@
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useLoader } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
-import { simpleCar } from './carModel'
 import { ROAD, seeded, type CityLayout } from './layout'
 import { cityMaterials } from './materials'
+import { TRAFFIC_CAR_URL, withMeshopt } from './PlayerCar'
 import { CROSS_HALF } from './Street'
 
 // Life on the street: palms, trees, lamps, traffic lights, benches, parked cars and traffic. All instanced.
@@ -207,11 +208,62 @@ const PAINTS = ['#d8dadd', '#2b2f35', '#8c9298', '#7b2028', '#24405e', '#e9e6df'
 type Moving = { lane: number; direction: 1 | -1; speed: number; start: number; paint: number }
 
 /** Traffic that flows past, and parked cars along the curb. */
+const CAR_LAYERS = ['paint', 'glass', 'dark', 'tail', 'head'] as const
+type CarLayers = Record<(typeof CAR_LAYERS)[number], THREE.BufferGeometry>
+const trafficCache = new WeakMap<GLTF, CarLayers>()
+
+/**
+ * The light copy of the player's car (public/car/car-lod.glb), as five plain geometries in car space:
+ * driving toward -Z, wheels on y = 0, centered.
+ */
+function trafficCar(gltf: GLTF): CarLayers {
+  const cached = trafficCache.get(gltf)
+  if (cached) return cached
+  gltf.scene.updateMatrixWorld(true)
+  const plain = {} as CarLayers
+  for (const name of CAR_LAYERS) {
+    const mesh = gltf.scene.getObjectByName(name) as THREE.Mesh | undefined
+    const g = new THREE.BufferGeometry()
+    if (mesh) {
+      // The file stores small integers (quantized); here they become plain meters.
+      for (const attribute of ['position', 'normal'] as const) {
+        const a = mesh.geometry.getAttribute(attribute)
+        const values = new Float32Array(a.count * 3)
+        for (let i = 0; i < a.count; i++) values.set([a.getX(i), a.getY(i), a.getZ(i)], i * 3)
+        g.setAttribute(attribute, new THREE.BufferAttribute(values, 3))
+      }
+      g.setIndex(mesh.geometry.getIndex())
+      g.applyMatrix4(mesh.matrixWorld)
+      g.normalizeNormals()
+    }
+    plain[name] = g
+  }
+  // Which way it faces: the headlights are at the front.
+  const center = (g: THREE.BufferGeometry) => {
+    g.computeBoundingBox()
+    return g.boundingBox!.getCenter(new THREE.Vector3())
+  }
+  const forward = center(plain.head).sub(center(plain.tail)).setY(0).normalize()
+  const all = new THREE.Box3()
+  const turn = new THREE.Matrix4().makeRotationY(Math.atan2(forward.x, forward.z) + Math.PI)
+  for (const g of Object.values(plain)) {
+    g.applyMatrix4(turn)
+    g.computeBoundingBox()
+    all.union(g.boundingBox!)
+  }
+  const middle = all.getCenter(new THREE.Vector3())
+  for (const g of Object.values(plain)) g.translate(-middle.x, -all.min.y, -middle.z)
+  trafficCache.set(gltf, plain)
+  return plain
+}
+
 export function Traffic({ layout, avoid, range }: { layout: CityLayout; avoid: number; range: [number, number] }) {
-  const geometry = useMemo(() => simpleCar(), [])
+  const gltf = useLoader(GLTFLoader, TRAFFIC_CAR_URL, withMeshopt)
+  const geometry = useMemo(() => trafficCar(gltf), [gltf])
   const materials = useMemo(
     () => ({
-      paint: new THREE.MeshPhysicalMaterial({ roughness: 0.32, metalness: 0.4, clearcoat: 0.8, clearcoatRoughness: 0.12 }),
+      // Plain metallic paint: the far cars do not need the clear coat of the player's car.
+      paint: new THREE.MeshStandardMaterial({ roughness: 0.3, metalness: 0.45, envMapIntensity: 1.2 }),
       glass: new THREE.MeshStandardMaterial({ color: '#0b0f14', roughness: 0.06, metalness: 0.5, envMapIntensity: 1.6 }),
       dark: new THREE.MeshStandardMaterial({ color: '#0e1013', roughness: 0.8 }),
       tail: new THREE.MeshStandardMaterial({ color: '#4a0808', emissive: '#ff2a1f', emissiveIntensity: 1.1 }),
@@ -226,13 +278,13 @@ export function Traffic({ layout, avoid, range }: { layout: CityLayout; avoid: n
       for (let d = -40; d < layout.length + 100; d += 8.5) {
         const nearCross = layout.crossings.some((c) => Math.abs(c - d) < CROSS_HALF + 9)
         const nearMission = layout.missionAt.some((a) => d > a - 34 && d < a + 9) && side === 1
-        if (nearCross || nearMission || random() > 0.4) continue
+        if (nearCross || nearMission || random() > 0.28) continue
         const f = layout.frame(d)
         // The parking strip along the curb; on the left the cars face the other way.
         parked.push({ position: layout.point(d, side * (ROAD.half - 1.15), 0), rotation: f.angle + (side > 0 ? 0 : Math.PI), scale: 0.98 + random() * 0.06, paint: Math.floor(random() * PAINTS.length) })
       }
     }
-    const moving: Moving[] = Array.from({ length: 16 }, (_, i) => ({
+    const moving: Moving[] = Array.from({ length: 10 }, (_, i) => ({
       lane: i % 2 === 0 ? -ROAD.innerLane : i % 4 === 1 ? ROAD.innerLane : -ROAD.lane + 0.6,
       direction: i % 2 === 0 || i % 4 !== 1 ? -1 : 1,
       speed: 9 + random() * 4,
@@ -272,7 +324,8 @@ export function Traffic({ layout, avoid, range }: { layout: CityLayout; avoid: n
       const d = ((((car.start + car.direction * car.speed * clock.elapsedTime) % span) + span) % span) - 40
       const f = layout.frame(d)
       // Cars of the player's direction keep away from where the player stands.
-      const hide = car.direction === 1 && Math.abs(d - avoid) < 7
+      // Out of sight (fog) they are not drawn at all.
+      const hide = (car.direction === 1 && Math.abs(d - avoid) < 7) || d < range[0] || d > range[1]
       dummy.position.copy(f.position).addScaledVector(f.right, car.lane).setY(hide ? -20 : 0)
       dummy.rotation.set(0, f.angle + (car.direction === 1 ? 0 : Math.PI), 0)
       dummy.scale.setScalar(1)

@@ -14,7 +14,7 @@ The whole site is in Hebrew (right-to-left).
 
 ## Customer area
 
-- **Now** (`/map`): a 3D coastal city (three.js + React Three Fiber, loaded lazily). The customer's car waits before the current mission and drives there from the last one. A small navigation map shows the way; the full map shows all districts and missions, and stands in for the street when the device has no WebGL. The picture lowers its quality by itself on slow devices.
+- **Now** (`/map`): a 3D coastal city (three.js + React Three Fiber, loaded lazily). The customer's car (a detailed concept car) waits before the current mission and drives there from the last one; the customer stands beside it, and Yarin or Oren waits at the mission. Only the part of the avenue around the drive is built (about 110 m behind and 320 m ahead); fog hides the rest. The camera stays behind or beside the car, never above it. A small navigation map shows the way; the full map shows all districts and missions, and stands in for the street when the device has no WebGL. The picture lowers its quality by itself on slow devices.
 - **Task** (`/level/:id/task/:taskId`): a path of steps. The video counts only the parts that were really watched, resumes, and has captions. Worksheets keep every version, the examiner answers criterion by criterion with quotes, and files (video, PDF, Word, slides, pictures) are opened and checked.
 - **Learning** (`/learning`) and **Business** (`/business`): the two metrics. A business report takes one minute a month.
 - **Coaches** (`/coach`):
@@ -22,7 +22,8 @@ The whole site is in Hebrew (right-to-left).
   - **The marketer**: hooks, messages, scripts, a content plan, a check of real work, a hook drill, and any question about the whole process.
   - **Mental coach**: a short talk that ends with one small step.
   - Every coach knows the customer's business file, remembers what was agreed (the customer can see and delete it), and takes dictated messages.
-- **Prizes** (`/rewards`), **character** (`/character`), **library** (`/library`, all lessons) and the public invite page (`/join/:code`).
+- **Character** (`/character`): the customer picks one of 20 realistic people (rigged, with motion-captured moves) and dresses them: a suit, a buttoned shirt or a T-shirt in a chosen color, or their own clothes; glasses, a gold chain, and a briefcase, a phone or a coffee. Claude can pick the closest person from a profile photo.
+- **Prizes** (`/rewards`), **library** (`/library`, all lessons) and the public invite page (`/join/:code`).
 
 ## Admin panel (`/admin`)
 
@@ -67,14 +68,16 @@ All numbers live in `server/src/game/rules.ts`. Points are for learning only; in
 | File storage | Vultr Object Storage (S3-compatible), private bucket with signed URLs |
 | Production | Docker Compose: API and a Caddy web container, behind the server's HTTPS reverse proxy |
 
-City textures and the sky are CC0 (ambientCG, Poly Haven); see `client/src/assets/city/LICENSE.md`.
+City textures and the sky are CC0 (ambientCG, Poly Haven); see `client/src/assets/city/LICENSE.md`. The people are from the Microsoft Rocketbox Avatar Library (MIT), converted by avatar-studio (MIT); see `client/public/people/LICENSE.md`. The car is "Car Concept" by Eric Chadwick / Darmstadt Graphics Group (CC BY 4.0); see `client/public/car/LICENSE.md`.
 
 ## Project structure
 
 ```
 client/                 React app
   src/components/city/  The 3D city, the navigation map and the fallback
-  src/components/mascot/  The 3D characters and the character builder
+  src/components/person/  The realistic people: models, clothes, extras (glasses, chain, things to hold)
+  src/components/mascot/  The small 3D scenes with people, and the character builder
+  public/people/, public/car/  The 3D models (glTF, meshopt-compressed) and their licenses
   src/pages/customer/   City, task (mission/), learning, business, coaches, voice call, prizes, library
   src/pages/admin/      Admin panel pages
   src/lib/voice.ts      Recording, dictation and reading aloud

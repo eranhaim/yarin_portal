@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { PEOPLE, PERSON_IDS } from './people.ts'
 import { SKILL_KEYS } from './rules.ts'
 
 // Shapes of the game content on a task (worksheet, quiz, review rubric) and of a character's look.
@@ -131,6 +132,8 @@ export function answersAsText(ws: Worksheet, answers: WorksheetAnswers): string 
 // ---------- Character look ----------
 
 export const lookSchema = z.object({
+  /** The realistic person (game/people.ts). Looks saved before it existed have none; the app then shows the closest one. */
+  person: z.enum(PERSON_IDS).optional(),
   skin: z.enum(['porcelain', 'light', 'tan', 'olive', 'brown', 'dark']),
   hair: z.enum(['short', 'quiff', 'slick', 'buzz', 'curly', 'long', 'bun', 'bald']),
   hairColor: z.enum(['black', 'darkBrown', 'brown', 'blond', 'red', 'gray', 'white']),
@@ -150,11 +153,14 @@ export function defaultLook(seed: string): Look {
   let hash = 0
   for (const char of seed) hash = (hash * 31 + char.charCodeAt(0)) | 0
   const pick = <T,>(list: readonly T[], shift: number) => list[Math.abs(hash >> shift) % list.length]!
+  const person = pick(PERSON_IDS, 0)
+  const { skin, hair, hairColor, beard } = PEOPLE[person]
   return {
-    skin: pick(['light', 'tan', 'olive', 'light', 'tan'] as const, 0),
-    hair: pick(['short', 'quiff', 'slick', 'curly', 'long'] as const, 3),
-    hairColor: pick(['black', 'darkBrown', 'brown', 'darkBrown'] as const, 6),
-    beard: pick(['none', 'stubble', 'none'] as const, 9),
+    person,
+    skin,
+    hair,
+    hairColor,
+    beard,
     mustache: false,
     glasses: pick(['none', 'none', 'round', 'none'] as const, 12),
     outfit: pick(['blazer', 'hoodie', 'tee', 'blazer'] as const, 15),

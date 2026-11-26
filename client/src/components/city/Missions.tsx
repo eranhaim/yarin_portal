@@ -337,15 +337,22 @@ type Props = {
   missions: CityMission[]
   playerAt: number
   parkedAt: number
+  /** The built part of the avenue; signs outside it are never seen. */
+  range: [number, number]
   onSelect: (mission: CityMission) => void
 }
 
-export function Missions({ layout, districts, missions, playerAt, parkedAt, onSelect }: Props) {
+export function Missions({ layout, districts, missions, playerAt, parkedAt, range, onSelect }: Props) {
   const target = layout.missionAt[playerAt] ?? layout.finishAt
   const closed = districts.find((d) => d.state === 'locked' && layout.spans[d.index]!.to > layout.spans[d.index]!.from)
   return (
     <>
-      {missions.map((mission) => (
+      {missions
+        .filter((mission) => {
+          const at = layout.missionAt[mission.index] ?? 0
+          return at > range[0] && at < range[1]
+        })
+        .map((mission) => (
         <MissionSign key={mission.id} mission={mission} color={districts[mission.chapterIndex]?.color ?? '#888888'} layout={layout} onSelect={() => onSelect(mission)} />
       ))}
       <CurrentMarker layout={layout} at={target} />

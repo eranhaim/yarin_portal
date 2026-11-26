@@ -7,7 +7,7 @@ import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js'
 import skyUrl from '../../assets/city/sky.hdr?url'
 import type { Host, Look } from '../../lib/types'
 
-import { SoftCharacter } from './SoftCharacter'
+import { Person } from '../person/Person'
 import { layoutCity, parkingFor, ROAD, type CityLayout } from './layout'
 import { Missions } from './Missions'
 import { PlayerCar, type CarState } from './PlayerCar'
@@ -16,7 +16,9 @@ import { Buildings, Street } from './Street'
 import type { CityDistrict, CityMission, Quality } from './types'
 
 // The street view: a sunny coastal city with real light. The camera follows the player's car, which waits in front
-// of the current mission. Dragging looks around; the wheel moves closer or farther.
+// of the current mission. Dragging looks around the car; the wheel moves a little closer or farther. The camera
+// always stays in the street, behind or beside the car: there is no view from above.
+// Only the part of the city around the drive is built (RANGE); the fog hides where it ends.
 
 export type CitySceneProps = {
   districts: CityDistrict[]
@@ -112,7 +114,7 @@ function Sun({ car, state, quality }: { car: RefObject<THREE.Group | null>; stat
     // The shadows are drawn again on every frame only while the car drives; a parked street hardly changes.
     const n = frame.current++
     const moving = Math.abs(state.current.speed) > 0.2
-    const every = quality === 'high' ? (moving ? 1 : 2) : quality === 'medium' ? (moving ? 1 : 4) : moving ? 2 : 24
+    const every = quality === 'high' ? (moving ? 1 : 3) : quality === 'medium' ? (moving ? 1 : 4) : moving ? 2 : 24
     gl.shadowMap.autoUpdate = false
     if (n < 30 || n % every === 0) gl.shadowMap.needsUpdate = true
     // Steps of a few meters keep the shadow edges from swimming.
@@ -146,6 +148,10 @@ function Sun({ car, state, quality }: { car: RefObject<THREE.Group | null>; stat
 }
 
 // ---------- The drive ----------
+
+/** How much of the avenue is built: meters behind the drive's start, and ahead of where the car parks. Cars are only
+ * placed in the nearer part (they are the heaviest props). */
+const RANGE = { behind: 110, ahead: 320, props: 260, cars: 200 }
 
 const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2)
 
@@ -242,8 +248,9 @@ function ChaseCamera({ car, state, shift, leaving, reducedMotion }: { car: RefOb
     const move = (e: PointerEvent) => {
       if (!drag || drag.id !== e.pointerId) return
       const l = look.current
-      l.yawTo -= (e.clientX - drag.x) * 0.0052
-      l.pitchTo = THREE.MathUtils.clamp(l.pitchTo + (e.clientY - drag.y) * 0.0035, -0.18, 0.85)
+      l.yawTo = THREE.MathUtils.clamp(l.yawTo - (e.clientX - drag.x) * 0.0052, -1.9, 1.9)
+      // Only a little up or down: the camera never rises to a view from above.
+      l.pitchTo = THREE.MathUtils.clamp(l.pitchTo + (e.clientY - drag.y) * 0.0035, -0.06, 0.16)
       drag = { id: e.pointerId, x: e.clientX, y: e.clientY }
     }
     const up = () => {
@@ -251,7 +258,7 @@ function ChaseCamera({ car, state, shift, leaving, reducedMotion }: { car: RefOb
     }
     const wheel = (e: WheelEvent) => {
       e.preventDefault()
-      look.current.zoomTo = THREE.MathUtils.clamp(look.current.zoomTo * Math.exp(e.deltaY * 0.0011), 0.65, 5)
+      look.current.zoomTo = THREE.MathUtils.clamp(look.current.zoomTo * Math.exp(e.deltaY * 0.0011), 0.78, 1.25)
     }
     const reset = () => Object.assign(look.current, { yawTo: 0, pitchTo: 0, zoomTo: 1 })
     el.addEventListener('pointerdown', down)
@@ -282,10 +289,8 @@ function ChaseCamera({ car, state, shift, leaving, reducedMotion }: { car: RefOb
     // A hint of life while the car waits.
     const sway = reducedMotion ? 0 : Math.sin(clock.elapsedTime * 0.35) * 0.02
     const far = (9.3 + Math.min(2.4, speed * 0.08)) * l.zoom
-    // Far away the camera also rises, over the roofs, so the picture becomes a view of the city.
-    const rise = THREE.MathUtils.smoothstep(l.zoom, 1.1, 3.2)
-    const pitch = Math.min(1.25, l.pitch + rise * 1.05)
-    const high = 2.5 + l.zoom * 0.4 + Math.sin(pitch) * far
+    const pitch = l.pitch
+    const high = 2.3 + l.zoom * 0.4 + Math.sin(pitch) * far
     const flat = far * Math.cos(pitch)
     // Below the roofs the camera stays in the street, between the walls.
     const side = Math.sin(l.yaw + sway) * flat
@@ -294,8 +299,8 @@ function ChaseCamera({ car, state, shift, leaving, reducedMotion }: { car: RefOb
     const back = Math.cos(l.yaw + sway) * flat
     const turn = g.rotation.y
     place.set(g.position.x + Math.sin(turn) * back + Math.cos(turn) * squeezed, high, g.position.z + Math.cos(turn) * back - Math.sin(turn) * squeezed)
-    const ahead = 9 * Math.max(0, Math.cos(l.yaw)) * (l.zoom > 1.6 ? 1.6 / l.zoom : 1)
-    focus.set(g.position.x - Math.sin(g.rotation.y) * ahead, 1.9, g.position.z - Math.cos(g.rotation.y) * ahead)
+    const ahead = 9 * Math.max(0, Math.cos(l.yaw))
+    focus.set(g.position.x - Math.sin(g.rotation.y) * ahead, 1.7, g.position.z - Math.cos(g.rotation.y) * ahead)
     if (l.first) camera.position.copy(place)
     else camera.position.lerp(place, Math.min(1, delta * 7))
     camera.lookAt(focus)
@@ -315,8 +320,9 @@ function Governor({ quality, onQuality }: { quality: Quality; onQuality: (q: Qua
     frames.current = []
     // Background tabs report long frames; those say nothing about the device.
     if (document.hidden || slow > 0.4) return
-    if (slow > 1 / 30 && quality === 'high') onQuality('medium')
-    else if (slow > 1 / 24 && quality === 'medium') onQuality('low')
+    // Smooth movement comes first: below about 40 pictures a second the ambient shadows (the heaviest effect) go.
+    if (slow > 1 / 40 && quality === 'high') onQuality('medium')
+    else if (slow > 1 / 30 && quality === 'medium') onQuality('low')
   })
   return null
 }
@@ -362,8 +368,10 @@ function World(props: CitySceneProps) {
   const state = useRef<CarState>({ distance: from, offset: ROAD.lane, speed: 0, steer: 0, braking: false })
   const [parked, setParked] = useState(false)
   const target = layout.missionAt[playerAt] ?? layout.finishAt
-  // The street furniture behind the drive and far ahead is never seen.
-  const range = useMemo<[number, number]>(() => [from - 120, parkedAt + 520], [from, parkedAt])
+  // The city behind the drive and far ahead is never seen, so it is not built.
+  const range = useMemo<[number, number]>(() => [from - RANGE.behind, parkedAt + RANGE.ahead], [from, parkedAt])
+  const propRange = useMemo<[number, number]>(() => [from - 60, parkedAt + RANGE.props], [from, parkedAt])
+  const carRange = useMemo<[number, number]>(() => [from - 40, parkedAt + RANGE.cars], [from, parkedAt])
   const host = hosts[playerAt % Math.max(1, hosts.length)]
   const here = layout.frame(target)
   const beside = layout.frame(parkedAt)
@@ -371,25 +379,25 @@ function World(props: CitySceneProps) {
   return (
     <>
       <Sky />
-      <fog attach="fog" args={['#bcd3e6', 190, 900]} />
+      <fog attach="fog" args={['#bfd5e7', 120, RANGE.ahead + 60]} />
       <hemisphereLight args={['#dfeeff', '#c9baa0', 0.75]} />
       <Sun car={car} state={state} quality={quality} />
-      <Street layout={layout} />
-      <Buildings layout={layout} />
-      <StreetLife layout={layout} range={range} />
-      <Traffic layout={layout} avoid={parkedAt} range={range} />
-      <Missions layout={layout} districts={districts} missions={missions} playerAt={playerAt} parkedAt={parkedAt} onSelect={props.onSelectMission} />
+      <Street layout={layout} range={range} />
+      <Buildings layout={layout} range={range} />
+      <StreetLife layout={layout} range={propRange} />
+      <Traffic layout={layout} avoid={parkedAt} range={carRange} />
+      <Missions layout={layout} districts={districts} missions={missions} playerAt={playerAt} parkedAt={parkedAt} range={range} onSelect={props.onSelectMission} />
       <PlayerCar state={state} root={car} />
       <>
-        {/* One of the hosts waits at the mission; the player stands by the car until they drive. */}
+        {/* One of the hosts waits at the mission; the player stands by the car until they drive. Real sizes. */}
         {host && (
-          <group position={layout.point(target + 2.6, ROAD.half + 0.9, 0.1)} rotation={[0, here.angle + 0.35, 0]} scale={0.7}>
-            <SoftCharacter look={host.look} pose="wave" reducedMotion={reducedMotion} />
+          <group position={layout.point(target + 2.6, ROAD.half + 0.9, 0.16)} rotation={[0, here.angle + 0.35, 0]}>
+            <Person look={host.look} pose="wave" reducedMotion={reducedMotion} rate={30} />
           </group>
         )}
         {parked && (
-          <group position={layout.point(parkedAt + 1.6, ROAD.half + 1.1, 0.1)} rotation={[0, beside.angle + 0.35, 0]} scale={0.66}>
-            <SoftCharacter look={playerLook} pose="idle" reducedMotion={reducedMotion} />
+          <group position={layout.point(parkedAt + 1.4, ROAD.half + 1.0, 0.16)} rotation={[0, beside.angle + 0.5, 0]}>
+            <Person look={playerLook} pose="idle" reducedMotion={reducedMotion} rate={30} />
           </group>
         )}
       </>
@@ -408,7 +416,7 @@ export default function CityScene(props: CitySceneProps) {
     <Canvas
       dpr={DPR[props.quality]}
       shadows={low ? 'basic' : 'soft'}
-      camera={{ fov: 46, near: 0.3, far: 1600, position: [0, 6, 20] }}
+      camera={{ fov: 46, near: 0.3, far: 900, position: [0, 6, 20] }}
       gl={{ antialias: low, powerPreference: 'high-performance', toneMapping: low ? THREE.NeutralToneMapping : THREE.NoToneMapping, toneMappingExposure: 1 }}
     >
       <Suspense fallback={null}>
