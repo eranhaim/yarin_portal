@@ -40,8 +40,8 @@
 		Referrer-Policy strict-origin-when-cross-origin
 		Permissions-Policy "camera=(), microphone=(), geolocation=()"
 		# Avatars, posters, videos and uploads come from the Vultr Object Storage bucket. WebAssembly (and only that)
-		# may run: it unpacks the compressed 3D models.
-		Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https://*.vultrobjects.com; media-src 'self' blob: https://*.vultrobjects.com; connect-src 'self' https://*.vultrobjects.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		# may run: it unpacks the compressed 3D models. The 3D loader reads the pictures inside a model through blob: URLs.
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https://*.vultrobjects.com; media-src 'self' blob: https://*.vultrobjects.com; connect-src 'self' blob: https://*.vultrobjects.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 		-Server
 	}
 }
