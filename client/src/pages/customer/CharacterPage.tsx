@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Avatar } from '../../components/Avatar'
 import { Icon } from '../../components/Icon'
 import { LookEditor } from '../../components/mascot/LookEditor'
@@ -112,6 +112,7 @@ export function CharacterPage() {
               }}
             />
           </div>
+          <ContactCard me={me} onSaved={setMe} />
         </div>
 
         <div className="character-studio__controls panel">
@@ -131,5 +132,49 @@ export function CharacterPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+/** The customer's mobile number and whether they get WhatsApp messages (reminders, Yarin and Oren's answers). */
+function ContactCard({ me, onSaved }: { me: CustomerSelf; onSaved: (me: CustomerSelf) => void }) {
+  const [phone, setPhone] = useState(me.phone)
+  const [whatsapp, setWhatsapp] = useState(me.whatsapp)
+  const [busy, setBusy] = useState(false)
+  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null)
+  const dirty = phone.trim() !== me.phone || whatsapp !== me.whatsapp
+
+  const save = async (e: FormEvent) => {
+    e.preventDefault()
+    setBusy(true)
+    setNote(null)
+    try {
+      const res = await api<{ customer: CustomerSelf }>('/me/contact', { method: 'PUT', body: { phone: phone.trim(), whatsapp } })
+      onSaved(res.customer)
+      setNote({ ok: true, text: whatsapp && phone.trim() ? 'נשמר. נעדכן אתכם בוואטסאפ.' : 'נשמר.' })
+    } catch (err) {
+      setNote({ ok: false, text: errorMessage(err) })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form className="character-studio__contact" onSubmit={(e) => void save(e)}>
+      <strong>
+        <Icon name="phone" size={16} /> וואטסאפ
+      </strong>
+      <p>תזכורות קצרות, והתשובות של ירין ואורן על העבודות שלכם. בלי הודעות בלילה ובשבת.</p>
+      <div className="character-studio__contact-row">
+        <input className="input ltr" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="050-1234567" aria-label="מספר נייד" />
+        <button type="submit" className="btn btn--sm" disabled={busy || !dirty}>
+          {busy ? <span className="spinner" /> : <Icon name="check" size={15} />} שמירה
+        </button>
+      </div>
+      <label className="toggle">
+        <input type="checkbox" checked={whatsapp} onChange={(e) => setWhatsapp(e.target.checked)} />
+        לקבל הודעות בוואטסאפ
+      </label>
+      {note && <small className={note.ok ? 'character-studio__ok' : 'character-studio__err'}>{note.text}</small>}
+    </form>
   )
 }

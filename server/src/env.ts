@@ -38,6 +38,14 @@ const schema = z.object({
   SPEECH_API_MODEL: z.preprocess(blankToUndefined, z.string().default('whisper-large-v3')),
   // … or a small Hebrew model on this server: the folder that keeps it (about 72 MB, downloads once). Empty = off.
   SPEECH_MODEL_DIR: optional(z.string()),
+
+  // WhatsApp messages through Green API (green-api.com). Off until both are set. The address is
+  // https://<first 4 digits of the instance>.api.greenapi.com unless GREEN_API_URL says otherwise.
+  GREEN_API_ID: optional(z.string().regex(/^\d+$/, 'must be the idInstance (digits)')),
+  GREEN_API_TOKEN: optional(z.string()),
+  GREEN_API_URL: optional(z.url()),
+  // The site's public address, for the links in messages (for example https://app.example.com).
+  APP_URL: optional(z.url()),
 })
 
 const parsed = schema.safeParse(process.env)

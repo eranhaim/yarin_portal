@@ -19,6 +19,7 @@ import { labRouter } from './lab.ts'
 import { lessonsRouter } from './lessons.ts'
 import { plansRouter } from './plans.ts'
 import { submissionsRouter } from './submissions.ts'
+import { whatsappRouter } from './whatsapp.ts'
 import { worksRouter } from './works.ts'
 
 export const adminRouter = Router()
@@ -91,3 +92,4 @@ adminRouter.use(worksRouter)
 adminRouter.use(brainRouter)
 adminRouter.use(labRouter)
 adminRouter.use(lessonsRouter)
+adminRouter.use(whatsappRouter)

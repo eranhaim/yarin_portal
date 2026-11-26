@@ -9,6 +9,8 @@ import { parseBody } from '../../http.ts'
 import { detectImageType, IMAGE_TYPES, type ImageType } from '../../images.ts'
 import { toCustomerView } from '../../models/Customer.ts'
 import { deleteObject, getObjectBytes, putObject, storageEnabled } from '../../storage.ts'
+import { chatIdOf } from '../../whatsapp/greenApi.ts'
+import { welcomeCustomer } from '../../whatsapp/notify.ts'
 import { customerOf } from './shared.ts'
 
 // The customer's game character: its look, their profile photo, and "make my character from my photo".
@@ -36,6 +38,30 @@ export async function lookFromPhoto(image: Buffer, type: ImageType): Promise<Loo
 profileRouter.get('/profile', async (_req, res) => {
   const customer = customerOf(res)
   res.json({ look: (customer.look as Look | null) ?? defaultLook(customer.name), custom: Boolean(customer.look) })
+})
+
+/** The customer's own phone number and whether they want WhatsApp messages. */
+profileRouter.put('/contact', async (req, res) => {
+  const body = parseBody(
+    z.object({
+      phone: z
+        .string()
+        .trim()
+        .max(40, 'מספר הטלפון ארוך מדי')
+        .refine((p) => p === '' || Boolean(chatIdOf(p)), 'כתבו מספר נייד תקין, למשל 050-1234567'),
+      whatsapp: z.boolean(),
+    }),
+    req,
+    res,
+  )
+  if (!body) return
+  const customer = customerOf(res)
+  const hadPhone = Boolean(customer.phone)
+  customer.phone = body.phone
+  customer.whatsapp = body.whatsapp
+  await customer.save()
+  if (!hadPhone && customer.phone) welcomeCustomer(customer)
+  res.json({ customer: await toCustomerView(customer) })
 })
 
 profileRouter.put('/look', async (req, res) => {

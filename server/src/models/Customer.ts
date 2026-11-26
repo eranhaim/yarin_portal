@@ -18,6 +18,8 @@ const customerSchema = new Schema(
     name: { type: String, required: true, trim: true, maxlength: 120 },
     email: { type: String, required: true, trim: true, lowercase: true, unique: true, maxlength: 254 },
     phone: { type: String, trim: true, maxlength: 40, default: '' },
+    /** WhatsApp messages from the program (reminders, Yarin and Oren's answers). The customer can turn them off. */
+    whatsapp: { type: Boolean, default: true },
     company: { type: String, trim: true, maxlength: 120, default: '' },
     notes: { type: String, trim: true, maxlength: 2000, default: '' },
     // Object key of the avatar image in the storage bucket.
@@ -65,6 +67,7 @@ export async function toCustomerView(c: CustomerDoc) {
     name: c.name,
     email: c.email,
     phone: c.phone,
+    whatsapp: c.whatsapp !== false,
     company: c.company,
     avatarUrl: await avatarUrl(c.avatarKey),
   }

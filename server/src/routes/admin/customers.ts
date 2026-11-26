@@ -11,6 +11,8 @@ import { Plan, planTaskIds, toPlanProgressView, type PlanDoc } from '../../model
 import { deleteSubmissions, Submission } from '../../models/Submission.ts'
 import { detectImageType, IMAGE_TYPES } from '../../images.ts'
 import { deleteObject, deleteObjects, putObject, storageEnabled } from '../../storage.ts'
+import { WhatsAppMessage } from '../../models/WhatsApp.ts'
+import { welcomeCustomer } from '../../whatsapp/notify.ts'
 
 export const customersRouter = Router()
 
@@ -31,6 +33,7 @@ const customerFields = {
   company: z.string().trim().max(120, 'שם העסק ארוך מדי').optional(),
   notes: z.string().trim().max(2000, 'ההערות ארוכות מדי').optional(),
   active: z.boolean().optional(),
+  whatsapp: z.boolean().optional(),
 }
 
 const createCustomerSchema = z.object({ ...customerFields, password })
@@ -77,6 +80,8 @@ customersRouter.post('/', async (req, res) => {
   if (!body) return
   const { password: plain, ...fields } = body
   const customer = await Customer.create({ ...fields, passwordHash: await hashPassword(plain) })
+  // A welcome on WhatsApp, when there is a number (once per customer).
+  welcomeCustomer(customer)
   res.status(201).json({ customer: await adminView(customer) })
 })
 
@@ -86,9 +91,12 @@ customersRouter.patch('/:id', async (req, res) => {
   const customer = await findCustomer(req.params.id, res)
   if (!customer) return
   const { password: plain, ...fields } = body
+  const hadPhone = Boolean(customer.phone)
   customer.set(fields)
   if (plain) customer.passwordHash = await hashPassword(plain)
   await customer.save()
+  // A number added later still gets the welcome (once per customer).
+  if (!hadPhone && customer.phone) welcomeCustomer(customer)
   res.json({ customer: await adminView(customer) })
 })
 
@@ -101,6 +109,7 @@ customersRouter.delete('/:id', async (req, res) => {
   // The customer's homework and game data go with them.
   await deleteSubmissions(await Submission.find({ customerId: customer._id }))
   const keys = await deleteGameData(customer._id)
+  await WhatsAppMessage.deleteMany({ customerId: customer._id })
   if (keys.length) await deleteObjects(keys).catch((err) => console.warn('Could not delete coach files', err))
   res.json({ ok: true })
 })

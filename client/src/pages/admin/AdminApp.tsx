@@ -5,6 +5,7 @@ import { Logo } from '../../components/Logo'
 import { ADMIN_UNAUTHORIZED, api, errorMessage } from '../../lib/api'
 import type { AdminIdentity, AdminStatus } from '../../lib/types'
 import { AdminsPage } from './AdminsPage'
+import { WhatsAppPage } from './WhatsAppPage'
 import { BrainPage } from './BrainPage'
 import { CustomerDetailPage } from './CustomerDetailPage'
 import { CustomersPage } from './CustomersPage'
@@ -192,6 +193,9 @@ function AdminShell({ me, onLogout }: { me: AdminIdentity; onLogout: () => void 
             <NavLink to="/admin/hosts" className="adm-top__link">
               <Icon name="sparkles" size={18} /> דמויות
             </NavLink>
+            <NavLink to="/admin/whatsapp" className="adm-top__link">
+              <Icon name="phone" size={18} /> וואטסאפ
+            </NavLink>
             <NavLink to="/admin/admins" className="adm-top__link">
               <Icon name="briefcase" size={18} /> מנהלים
             </NavLink>
@@ -248,6 +252,7 @@ function AdminShell({ me, onLogout }: { me: AdminIdentity; onLogout: () => void 
             <Route path="leads" element={<LeadsPage onChange={loadLeads} />} />
             <Route path="hosts" element={<HostsPage />} />
             <Route path="admins" element={<AdminsPage me={me} />} />
+            <Route path="whatsapp" element={<WhatsAppPage />} />
             <Route path="*" element={<Navigate to="customers" replace />} />
           </Routes>
         </InboxContext.Provider>

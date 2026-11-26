@@ -17,6 +17,7 @@ import { Lead, QuizAttempt, WorksheetResponse, type WorksheetResponseDoc } from 
 import type { TaskView } from '../../models/Plan.ts'
 import { Submission } from '../../models/Submission.ts'
 import { botReleased } from '../../ai/release.ts'
+import { tellAdminsRequest } from '../../whatsapp/notify.ts'
 import { customerOf, findTask, openTask, planOf, planView, skillOf, syncTask } from './shared.ts'
 
 // The learning loop for customers: worksheets with versions, the AI examiner, quizzes, the summary of both
@@ -341,6 +342,7 @@ gameRouter.post('/tasks/:taskId/move-on', async (req, res) => {
   response.acceptedAt = new Date()
   response.human = { status: 'requested', request: 'הלקוח המשיך הלאה עם עבודה שלא עברה את הבוחן.', note: '', by: '', at: null }
   await response.save()
+  tellAdminsRequest(customer.name, response.id as string, found.task.title, response.human.request ?? '')
   const completed = await syncTask(customer, found.plan, found.task)
   res.json(await withPlan(customer, found.plan, response, completed))
 })
@@ -360,6 +362,7 @@ gameRouter.post('/tasks/:taskId/human-check', async (req, res) => {
   response.human = { status: 'requested', request: body.message, note: response.human?.note ?? '', by: '', at: null }
   response.seenAt = null
   await response.save()
+  tellAdminsRequest(customer.name, response.id as string, found.task.title, body.message)
   res.json(await withPlan(customer, found.plan, response))
 })
 

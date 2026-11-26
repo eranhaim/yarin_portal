@@ -5,6 +5,7 @@ import { defaultLook, type Look } from '../game/content.ts'
 import { parseBody } from '../http.ts'
 import { Customer } from '../models/Customer.ts'
 import { getSetting, Lead } from '../models/Game.ts'
+import { tellAdminsLead } from '../whatsapp/notify.ts'
 
 // Routes without a login: the hosts' characters for the login screen, and the "bring a friend" page.
 export const publicRouter = Router()
@@ -81,6 +82,9 @@ publicRouter.post('/join/:code', joinLimit, async (req, res) => {
   }
   // The same person through the same friend counts once.
   const duplicate = await Lead.findOne({ referrerId: referrer._id, phone: body.phone })
-  if (!duplicate) await Lead.create({ referrerId: referrer._id, ...body })
+  if (!duplicate) {
+    const lead = await Lead.create({ referrerId: referrer._id, ...body })
+    tellAdminsLead(lead.id as string, body.name, body.phone, referrer.name, body.note)
+  }
   res.status(201).json({ ok: true })
 })

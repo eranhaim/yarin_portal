@@ -9,6 +9,7 @@ import { Customer, toCustomerView } from '../../models/Customer.ts'
 import { WorksheetResponse, type WorksheetResponseDoc } from '../../models/Game.ts'
 import { Plan, toPlanProgressView, toTaskView, type PlanDoc } from '../../models/Plan.ts'
 import { Submission, toSubmissionView } from '../../models/Submission.ts'
+import { tellDecision } from '../../whatsapp/notify.ts'
 import { syncTask } from '../me/shared.ts'
 
 // The review queue: work that customers handed in, with the AI's check, for Yarin and Oren's own decision.
@@ -16,10 +17,10 @@ import { syncTask } from '../me/shared.ts'
 export const worksRouter = Router()
 
 /** Waiting for a person: asked for, or handed in and not opened yet. */
-const OPEN: Record<string, object> = { submittedAt: { $ne: null }, $or: [{ 'human.status': 'requested' }, { seenAt: null, 'human.status': { $in: ['none', null] } }] }
+export const OPEN_WORKS: Record<string, object> = { submittedAt: { $ne: null }, $or: [{ 'human.status': 'requested' }, { seenAt: null, 'human.status': { $in: ['none', null] } }] }
 
 worksRouter.get('/works/summary', async (_req, res) => {
-  const [open, requested] = await Promise.all([WorksheetResponse.countDocuments(OPEN), WorksheetResponse.countDocuments({ 'human.status': 'requested' })])
+  const [open, requested] = await Promise.all([WorksheetResponse.countDocuments(OPEN_WORKS), WorksheetResponse.countDocuments({ 'human.status': 'requested' })])
   res.json({ open, requested })
 })
 
@@ -53,7 +54,7 @@ async function worksOf(responses: WorksheetResponseDoc[]) {
 }
 
 worksRouter.get('/works', async (req, res) => {
-  const filter: Record<string, object> = req.query.filter === 'all' ? { submittedAt: { $ne: null } } : OPEN
+  const filter: Record<string, object> = req.query.filter === 'all' ? { submittedAt: { $ne: null } } : OPEN_WORKS
   const responses: WorksheetResponseDoc[] = await WorksheetResponse.find(filter).sort({ submittedAt: -1 }).limit(200)
   const works = await worksOf(responses)
   // Requests of customers come first.
@@ -122,6 +123,9 @@ worksRouter.post('/works/:id/decision', async (req, res) => {
     const task = view.chapters.flatMap((c) => c.tasks).find((t) => t.id === response.taskId.toString())
     if (task) await syncTask(customer, plan, task)
   }
+  // The customer hears about it on WhatsApp (a note alone too).
+  const taskTitle = plan.chapters.flatMap((c) => c.tasks).find((t) => t._id.equals(response.taskId))?.title ?? 'המשימה'
+  tellDecision(customer, response.id as string, response.human.at!, body.action, taskTitle, body.note, response.human.by ?? 'ירין ואורן')
   const [work] = await worksOf([response])
   res.json({ work })
 })

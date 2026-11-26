@@ -54,6 +54,15 @@ Claude through the official Anthropic SDK (`server/src/ai/`): structured output 
 - Without credit or a working key the coaches pause, work goes to people, admins see why, and everything resumes by itself.
 - Speech runs on the server (sherpa-onnx): a Hebrew streaming Zipformer by Yakov Kolani, published by ivrit.ai (CC BY 4.0); pyannote segmentation 3.0 (MIT) and 3D-Speaker CAM++ (Apache 2.0) tell voices apart. A minute of a call takes about 20 seconds on a small server.
 
+## WhatsApp messages
+
+Through [Green API](https://green-api.com) (`server/src/whatsapp/`), from the WhatsApp account linked in its console. Set `GREEN_API_ID`, `GREEN_API_TOKEN` and `APP_URL` (for the links) in `.env`; only the production server sends.
+
+- To customers: a welcome (when a customer gets a mobile number), Yarin and Oren's answer on a work, a reminder after 3 and 7 days without activity (the next task, never more), and on the 1st-3rd of the month a request for last month's business numbers.
+- To the admins (their numbers, or the linked account's own chat): a request for a personal check, a new referral lead, a morning summary, and an alert when the AI stops or works again.
+- Every message is queued once (a unique key), waits for 08:30 at night and for Saturday night on Shabbat, and is tried again after a temporary error. Customers can turn messages off on their character page; admins choose the kinds and see the log in **WhatsApp** (`/admin/whatsapp`).
+- Green API's free plan reaches only 3 chats a month; all customers need its Business plan.
+
 ## The game rules
 
 All numbers live in `server/src/game/rules.ts`. Points are for learning only; income and referrals open prizes and ranks, and never give XP. Points are idempotent: each action has a key, so doing it again does not pay twice (a better quiz or review pays the difference).

@@ -1740,3 +1740,45 @@
   gap: 10px;
   margin-top: 14px;
 }
+
+/* WhatsApp messages: the customer's number and the switch. */
+.character-studio__contact {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line-c);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.character-studio__contact strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.character-studio__contact p {
+  margin: 0;
+  color: var(--muted, inherit);
+  font-size: 0.88rem;
+  opacity: 0.85;
+}
+
+.character-studio__contact-row {
+  display: flex;
+  gap: 8px;
+}
+
+.character-studio__contact-row .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.character-studio__ok {
+  color: #2fe0b0;
+}
+
+.character-studio__err {
+  color: #ff8a7a;
+}

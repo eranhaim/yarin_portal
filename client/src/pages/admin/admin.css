@@ -87,6 +87,18 @@
   }
 }
 
+/* Ten links fit a 1366 px laptop screen when they are a little tighter. */
+@media (max-width: 1500px) {
+  .adm-top__nav {
+    gap: 0;
+  }
+
+  .adm-top__link {
+    gap: 5px;
+    padding: 0 8px;
+  }
+}
+
 .adm-top__link {
   display: inline-flex;
   align-items: center;
@@ -2857,4 +2869,121 @@
 
 .adm-alert svg {
   flex-shrink: 0;
+}
+
+/* ---------- WhatsApp ---------- */
+
+.adm-wa {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.adm-wa__log {
+  grid-column: 1 / -1;
+}
+
+.adm-wa__status,
+.adm-wa__settings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.adm-wa__state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.adm-wa__counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.adm-wa__note {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.adm-wa__test {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.adm-wa__test .input {
+  flex: 1 1 200px;
+}
+
+.adm-wa__group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.adm-wa__group legend {
+  padding: 0 6px;
+  font-weight: 700;
+}
+
+.adm-wa__kind span {
+  display: flex;
+  flex-direction: column;
+}
+
+.adm-wa__kind small {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.adm-wa__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.adm-wa__list li {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.adm-wa__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.adm-wa__meta time {
+  margin-inline-start: auto;
+  color: var(--text-muted);
+}
+
+.adm-wa__text {
+  margin-top: 6px;
+  white-space: pre-line;
+  font-size: 0.92rem;
+}
+
+.adm-wa__error {
+  color: var(--danger);
+}
+
+@media (max-width: 860px) {
+  .adm-wa {
+    grid-template-columns: 1fr;
+  }
 }

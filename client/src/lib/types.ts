@@ -28,6 +28,8 @@ export type CustomerSelf = {
   name: string
   email: string
   phone: string
+  /** WhatsApp messages from the program are on. */
+  whatsapp: boolean
   company: string
   avatarUrl: string | null
 }
@@ -572,4 +574,35 @@ export type Brain = {
   size: { lessons: number; lessonWords: number; items: number; itemWords: number }
   items: BrainItem[]
   coaches: BrainCoach[]
+}
+
+// ---------- WhatsApp (Green API) ----------
+
+export type WhatsAppKind = 'welcome' | 'decision' | 'reminder' | 'monthly' | 'adminRequest' | 'adminLead' | 'adminDigest' | 'adminAi' | 'test'
+export type WhatsAppSettings = {
+  enabled: boolean
+  adminPhones: string[]
+  kinds: Record<Exclude<WhatsAppKind, 'test'>, boolean>
+  quiet: boolean
+}
+export type WhatsAppMessageView = {
+  id: string
+  kind: WhatsAppKind
+  to: string
+  phone: string | null
+  text: string
+  status: 'queued' | 'sent' | 'failed'
+  error: string
+  createdAt: string
+  sendAfter: string
+  sentAt: string | null
+}
+export type WhatsAppStatus = {
+  configured: boolean
+  /** authorized = linked and ready. */
+  state: string | null
+  number: string | null
+  settings: WhatsAppSettings
+  counts: Partial<Record<'queued' | 'sent' | 'failed', number>>
+  messages: WhatsAppMessageView[]
 }

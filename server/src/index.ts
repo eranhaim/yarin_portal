@@ -6,6 +6,7 @@ import { warmUpSpeech } from './ai/speech.ts'
 import { connectDb, disconnectDb } from './db.ts'
 import { migrate } from './migrate.ts'
 import { storageEnabled } from './storage.ts'
+import { startWhatsApp } from './whatsapp/notify.ts'
 
 await connectDb()
 await migrate()
@@ -13,6 +14,8 @@ await closeStaleRuns()
 warmUpSpeech()
 // On a developer's computer the tests run only by hand: every run costs money.
 if (isProduction) startCaretaker()
+// WhatsApp messages go out only from the server (a developer's computer with test data sends nothing).
+if (isProduction) startWhatsApp()
 
 const server = app.listen(env.PORT, () => {
   console.log(`API listening on port ${env.PORT} (${env.NODE_ENV})`)

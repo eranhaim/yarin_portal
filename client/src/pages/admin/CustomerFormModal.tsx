@@ -25,6 +25,7 @@ type Fields = {
   password: string
   planId: string
   active: boolean
+  whatsapp: boolean
 }
 
 function initialFields(c?: AdminCustomer): Fields {
@@ -37,6 +38,7 @@ function initialFields(c?: AdminCustomer): Fields {
     password: '',
     planId: c?.plan?.id ?? '',
     active: c?.active ?? true,
+    whatsapp: c?.whatsapp ?? true,
   }
 }
 
@@ -98,6 +100,7 @@ export function CustomerFormModal({ open, onClose, customer, plans, onSaved }: P
         phone: fields.phone,
         company: fields.company,
         notes: fields.notes,
+        whatsapp: fields.whatsapp,
       }
       if (fields.password) body.password = fields.password
       if (isEdit) body.active = fields.active
@@ -303,6 +306,11 @@ export function CustomerFormModal({ open, onClose, customer, plans, onSaved }: P
             הערות <small>(רק אתם רואים אותן)</small>
           </span>
           <textarea className="textarea" value={fields.notes} onChange={(e) => set('notes', e.target.value)} rows={3} />
+        </label>
+
+        <label className="toggle">
+          <input type="checkbox" checked={fields.whatsapp} onChange={(e) => set('whatsapp', e.target.checked)} />
+          הודעות בוואטסאפ (ברוכים הבאים, תזכורות והתשובות שלכם על עבודות)
         </label>
 
         {isEdit && (
